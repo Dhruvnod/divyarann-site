@@ -332,6 +332,7 @@ img { max-width: 100%; }
 .follow form { display: flex; flex-wrap: wrap; gap: 10px; }
 .follow input[type="email"] { flex: 1 1 240px; min-width: 0; font: inherit; font-size: 17px; padding: 12px 14px; background: var(--night); color: var(--ink); border: 1px solid var(--line); }
 .follow .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.follow .fine { font-size: 14px; color: #a9a3c2; margin-top: -4px; }
 .contents { margin: 0; padding: 0; list-style: none; display: grid; }
 .contents li { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 20px; padding: 20px 0; border-top: 1px solid var(--line-soft); align-items: center; }
 .contents li:last-child { border-bottom: 1px solid var(--line-soft); }
