@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="/assets/site.css">
 <script src="/assets/dv.js" defer></script>
 
@@ -385,7 +385,7 @@
 </main>
 <script>
 (function () {
-  var root = document.documentElement, KEY = "divyarann-size", base = window.matchMedia("(max-width: 760px)").matches ? 18.5 : 20;
+  var root = document.documentElement, KEY = "divyarann-size", base = window.matchMedia("(max-width: 760px)").matches ? 17.5 : 19;
   var size = base; try { size = parseFloat(localStorage.getItem(KEY)) || base; } catch (e) {}
   function apply() { root.style.setProperty("--prose-size", size + "px"); try { localStorage.setItem(KEY, size); } catch (e) {} }
   if (size !== base) apply();
