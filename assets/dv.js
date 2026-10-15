@@ -528,11 +528,20 @@
     });
   }
 
+  // ---------- True names: a stand-in until the reader reaches the chapter that gives the name ----------
+  function names() {
+    var reached = DV.reached();
+    document.querySelectorAll(".dv-name[data-name-ch]").forEach(function (n) {
+      if (!n.hasAttribute("data-alias")) n.setAttribute("data-alias", n.textContent);
+      n.textContent = reached >= +n.getAttribute("data-name-ch") ? n.getAttribute("data-name") : n.getAttribute("data-alias");
+    });
+  }
+
   // ---------- Start ----------
   function init() {
-    reveal(); home(); livingWheel(); contents(); codexPage(); reader(); countdowns();
+    names(); reveal(); home(); livingWheel(); contents(); codexPage(); reader(); countdowns();
     window.addEventListener("hashchange", function () { setTimeout(reveal, 0); });
-    window.addEventListener("dv:progress", function () { reveal(); });
+    window.addEventListener("dv:progress", function () { names(); reveal(); });
   }
   // deferred scripts run before DOMContentLoaded; waiting for it lets dv-map.js (also deferred) arrive first
   if (document.readyState === "complete") init(); else document.addEventListener("DOMContentLoaded", init);
