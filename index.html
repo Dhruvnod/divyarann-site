@@ -6,7 +6,7 @@
 <title>Divyarann · Book One: Vinash</title>
 <meta name="description" content="The companion site to DIVYARANN, Book One: Vinash. Read the chapters free online, and explore the story, the tears in the sky and the powers as they are revealed.">
 <meta name="theme-color" content="#07060f">
-<script>(function(){try{var q=/[?&]palette=(akash|grahan)/.exec(location.search),p=q?q[1]:localStorage.getItem("divyarann-palette");if(q)localStorage.setItem("divyarann-palette",p);if(p==="grahan"||p==="akash")document.documentElement.setAttribute("data-palette",p);}catch(e){}})();</script>
+<script>(function(){var d=document.documentElement;try{var q=/[?&]palette=(akash|grahan)/.exec(location.search),p=q?q[1]:localStorage.getItem("divyarann-palette");if(q)localStorage.setItem("divyarann-palette",p);if(p==="grahan"||p==="akash")d.setAttribute("data-palette",p);var r=JSON.parse(localStorage.getItem("divyarann-reading")||"{}");if(r.theme&&r.theme!=="night")d.setAttribute("data-read-theme",r.theme);if(r.font&&r.font!=="book")d.setAttribute("data-read-font",r.font);if(r.space&&r.space!=="normal")d.setAttribute("data-read-space",r.space);if(r.words)d.setAttribute("data-words","on");}catch(e){}var h=new Date().getHours();d.setAttribute("data-sky",h>=5&&h<8?"dawn":h>=8&&h<17?"day":h>=17&&h<20?"dusk":"night");})();</script>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="Divyarann: new chapters" href="/feed.xml">
@@ -20,8 +20,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/dv.js" defer></script>
 
 </head>
 <body>
@@ -73,6 +74,7 @@
 </symbol>
 </defs>
 </svg>
+<script type="application/json" id="dv-data">{"page": "home"}</script>
 
 <script>(function(){try{var p=localStorage.getItem("divyarann-palette");if(p==="grahan"||p==="akash")document.documentElement.setAttribute("data-palette",p);}catch(e){}})();</script>
 
@@ -84,7 +86,7 @@
 <div class="bar-in">
 <a aria-label="Divyarann home" class="brand" href="#home"><svg aria-hidden="true"><use href="#mark"></use></svg><b>DIVYARANN</b></a>
 <nav aria-label="Pages">
-<a data-nav="home" href="#home">Home</a><a href="/read/">Read</a>
+<a data-nav="home" href="#home">Home</a><a href="/read/">Read</a><a href="/codex/">Codex</a>
 <a data-nav="story" href="#story">The Story</a>
 <a data-nav="tears" href="#tears">The Tears</a>
 <a data-nav="powers" href="#powers">Powers &amp; Abilities</a>
@@ -115,9 +117,10 @@
 <p class="eyebrow">Vinash · <span class="deva" lang="sa">विनाश</span></p>
 <h2 id="saga-h">Book One so far</h2>
 <p>Five chapters released so far. Each is titled with one Sanskrit word.</p>
+<p id="dv-count"></p>
 </header>
 <ol class="timeline">
-<li class="entry l">
+<li class="entry l" data-n="1">
 <span aria-hidden="true" class="node"><span class="deva">१</span></span>
 <a class="tl-card" href="/read/1/">
 <span class="tl-top"><span class="tl-label">Chapter One</span><span class="tl-pov">Samyukt</span></span>
@@ -126,7 +129,7 @@
 <span class="tl-go">Read chapter one →</span>
 </a>
 </li>
-<li class="entry r">
+<li class="entry r" data-n="2">
 <span aria-hidden="true" class="node"><span class="deva">२</span></span>
 <a class="tl-card" href="/read/2/">
 <span class="tl-top"><span class="tl-label">Chapter Two</span><span class="tl-pov">Kairavi</span></span>
@@ -135,7 +138,7 @@
 <span class="tl-go">Read chapter two →</span>
 </a>
 </li>
-<li class="entry l">
+<li class="entry l" data-n="3">
 <span aria-hidden="true" class="node"><span class="deva">३</span></span>
 <a class="tl-card" href="/read/3/">
 <span class="tl-top"><span class="tl-label">Chapter Three</span><span class="tl-pov">Raghav, then Kabir</span></span>
@@ -144,7 +147,7 @@
 <span class="tl-go">Read chapter three →</span>
 </a>
 </li>
-<li class="entry r">
+<li class="entry r" data-n="4">
 <span aria-hidden="true" class="node"><span class="deva">४</span></span>
 <a class="tl-card" href="/read/4/">
 <span class="tl-top"><span class="tl-label">Chapter Four</span><span class="tl-pov">Samyukt</span></span>
@@ -153,7 +156,7 @@
 <span class="tl-go">Read chapter four →</span>
 </a>
 </li>
-<li class="entry l">
+<li class="entry l" data-n="5">
 <span aria-hidden="true" class="node"><span class="deva">५</span></span>
 <a class="tl-card" href="/read/5/">
 <span class="tl-top"><span class="tl-label">Chapter Five</span><span class="tl-pov">Kairavi</span></span>
@@ -162,7 +165,7 @@
 <span class="tl-go">Read chapter five →</span>
 </a>
 </li>
-<li class="entry r">
+<li class="entry r is-locked" data-n="6">
 <span aria-hidden="true" class="node locked"><span class="deva">६</span></span>
 <div class="tl-card locked">
 <span class="tl-top"><span class="tl-label">Chapter Six</span><span class="tl-pov">Locked</span></span>
@@ -215,7 +218,7 @@
 <div class="section">
 <div class="section-head"><h2>The trilogy</h2></div>
 <div class="books">
-<div class="book current" data-ch="5">
+<div class="book current">
 <div class="bn">Book One · being written</div>
 <h3>Vinash<span class="deva">विनाश</span></h3>
 <p>The beginning of the crisis. Four people awaken under the Dwarka tear, lose people they promised to save, and learn what their power costs.</p>
@@ -230,43 +233,43 @@
 <div class="movement">
 <h3>Before the tear</h3>
 <ol class="chapters">
-<li data-ch="1">
+<li>
 <div class="ch-no" data-n="Ch 1"><span class="deva">१</span></div>
 <div class="ch-body">
 <div class="ch-head"><a href="/read/1/"><span class="ch-title">Adya</span></a><span class="deva">आद्य</span><span class="ch-gloss">the beginning</span><span class="ch-pov">Samyukt</span></div>
-<p>A Monday in September. Samyukt runs his late father’s chemical trading shop with ₹38,412 in the account, a hotel invoice stuck on a portal, and a creditor who uses his father’s memory to collect a loan. Dinner with his mother Naina and sister Ishita, gaming with Raghav and Kabir, and the first news of seismic signals with no earthquake behind them. Something warm has settled under his ribs.</p>
+<p data-ch="1" data-seal="veil" data-uid="ud9014b7810">A Monday in September. Samyukt runs his late father’s chemical trading shop with ₹38,412 in the account, a hotel invoice stuck on a portal, and a creditor who uses his father’s memory to collect a loan. Dinner with his mother Naina and sister Ishita, gaming with Raghav and Kabir, and the first news of seismic signals with no earthquake behind them. Something warm has settled under his ribs.</p>
 <div class="chips"><span class="chip page">Ch 1</span></div>
 </div>
 </li>
-<li data-ch="2">
+<li>
 <div class="ch-no" data-n="Ch 2"><span class="deva">२</span></div>
 <div class="ch-body">
 <div class="ch-head"><a href="/read/2/"><span class="ch-title">Aakanksha</span></a><span class="deva">आकांक्षा</span><span class="ch-gloss">aspiration</span><span class="ch-pov">Kairavi</span></div>
-<p>Kairavi, an AI engineer, refuses to trust a model that looks too good and finds the filter that was flattering it. At home she gives her father Rajeev ten thousand of the fifteen he asked for, and they reopen the oldest argument in the house: the astrophysics degree abroad that her family said no to. Overnight she lines up four seismic stations and finds that the pulses are speeding up. By morning she has a fever.</p>
+<p data-ch="2" data-seal="veil" data-uid="u0b37a00eb3">Kairavi, an AI engineer, refuses to trust a model that looks too good and finds the filter that was flattering it. At home she gives her father Rajeev ten thousand of the fifteen he asked for, and they reopen the oldest argument in the house: the astrophysics degree abroad that her family said no to. Overnight she lines up four seismic stations and finds that the pulses are speeding up. By morning she has a fever.</p>
 <div class="chips"><span class="chip page">Ch 2</span></div>
 </div>
 </li>
-<li data-ch="3">
+<li>
 <div class="ch-no" data-n="Ch 3"><span class="deva">३</span></div>
 <div class="ch-body">
 <div class="ch-head"><a href="/read/3/"><span class="ch-title">Spandan</span></a><span class="deva">स्पंदन</span><span class="ch-gloss">the pulse</span><span class="ch-pov">Raghav, then Kabir</span></div>
-<p>Raghav loses the flat that his loan to Samyukt delayed. Kabir’s cheap vibration monitor records the pulse pattern on an isolated rig. Dinner at the shop becomes the conversation about money that the three friends have avoided: twelve lakh in debt, and a plan to repay it together. A pulse dims the lights, and Raghav hears Kabir say his name without Kabir speaking.</p>
+<p data-ch="3" data-seal="veil" data-uid="u59ca902606">Raghav loses the flat that his loan to Samyukt delayed. Kabir’s cheap vibration monitor records the pulse pattern on an isolated rig. Dinner at the shop becomes the conversation about money that the three friends have avoided: twelve lakh in debt, and a plan to repay it together. A pulse dims the lights, and Raghav hears Kabir say his name without Kabir speaking.</p>
 <div class="chips"><span class="chip page">Ch 3</span></div>
 </div>
 </li>
-<li data-ch="4">
+<li>
 <div class="ch-no" data-n="Ch 4"><span class="deva">४</span></div>
 <div class="ch-body">
 <div class="ch-head"><a href="/read/4/"><span class="ch-title">Aahvan</span></a><span class="deva">आह्वान</span><span class="ch-gloss">the summons</span><span class="ch-pov">Samyukt</span></div>
-<p>Twelve days of fever and normal test results. Ishita finds his old recurve bow, and at the range one shot buries an arrow to the fletching. That night he dreams of an ash plain under a fractured sky, a bow rising from the ash, and a voice asking what he is willing to destroy to protect what he loves.</p>
+<p data-ch="4" data-seal="veil" data-uid="ue4f72f0f6e">Twelve days of fever and normal test results. Ishita finds his old recurve bow, and at the range one shot buries an arrow to the fletching. That night he dreams of an ash plain under a fractured sky, a bow rising from the ash, and a voice asking what he is willing to destroy to protect what he loves.</p>
 <div class="chips"><span class="chip page">Ch 4</span></div>
 </div>
 </li>
-<li data-ch="5">
+<li>
 <div class="ch-no" data-n="Ch 5"><span class="deva">५</span></div>
 <div class="ch-body">
 <div class="ch-head"><a href="/read/5/"><span class="ch-title">Lakshan</span></a><span class="deva">लक्षण</span><span class="ch-gloss">the sign</span><span class="ch-pov">Kairavi</span></div>
-<p>In the seventh week the seismologist Dr Leela Menon answers Kairavi’s model and brings her into an emergency review group. During a pulse at the office Kairavi evacuates most of the floor, sees faint lines of strain along the glass, then misjudges a corridor, and a colleague is hurt. Menon calls: seven concentrations, roughly one per continent, and the one over northern India is gathering.</p>
+<p data-ch="5" data-seal="veil" data-uid="ub81391ce9c">In the seventh week the seismologist Dr Leela Menon answers Kairavi’s model and brings her into an emergency review group. During a pulse at the office Kairavi evacuates most of the floor, sees faint lines of strain along the glass, then misjudges a corridor, and a colleague is hurt. Menon calls: seven concentrations, roughly one per continent, and the one over northern India is gathering.</p>
 <div class="chips"><span class="chip page">Ch 5</span></div>
 </div>
 </li>
@@ -321,7 +324,7 @@
 
 
 
-<script>window.DIVYARANN_RELEASED = 5;</script><script>
+<script>window.DIVYARANN_RELEASED = 5; window.DIVYARANN_NEXT = null;</script><script>
 (function () {
 
   // ---------- The wheel of eighteen ----------
@@ -332,6 +335,19 @@
     var gold = "var(--wheel-line)", faint = "var(--wheel-faint)", hub = "var(--night)";
     var PETAL = "M0,-342 C 26,-318 30,-292 0,-262 C -30,-292 -26,-318 0,-342 Z";
     var RELEASED = window.DIVYARANN_RELEASED || 999;  // the public site sets this to the last released chapter
+    var PROG = {};
+    try { PROG = JSON.parse(localStorage.getItem("divyarann-progress") || "{}") || {}; } catch (e) {}
+    var PREV = /[?&]preview-read=(\d+)/.exec(location.search);
+    if (PREV) { PROG = { read: {}, seen: {} }; for (var pv = 1; pv <= +PREV[1]; pv++) PROG.read[pv] = 1; }
+    if (window.DIVYARANN_RELEASED) {  // on the public site each reader's wheel only opens as far as they have read
+      var reachedCh = 0; for (var rk in (PROG.read || {})) reachedCh = Math.max(reachedCh, +rk);
+      RELEASED = Math.min(RELEASED, reachedCh);
+    }
+    (function () {  // the pulse quickens as the next chapter nears
+      var nx = window.DIVYARANN_NEXT ? Date.parse(window.DIVYARANN_NEXT) : NaN, per = 6;
+      if (!isNaN(nx)) { var days = Math.max(0, (nx - Date.now()) / 864e5); per = 1.2 + Math.min(days, 7) * 0.6; }
+      document.documentElement.style.setProperty("--pulse-period", per.toFixed(2) + "s");
+    })();
     var TRUTHS = {
       0: { icon: "#icon-sealed", href: "#", label: "Sealed", status: "page", ch: 8 },
       1: { icon: "#icon-sealed", href: "#", label: "Sealed", status: "page", ch: 99 }
@@ -348,7 +364,7 @@
     for (var j = 0; j < 18; j++) {
       var s = el("g", { transform: "rotate(" + (j * 20) + ")" }, spokes);
       el("line", { x1: 0, y1: -252, x2: 0, y2: -112, stroke: faint, "stroke-width": 1 }, s);
-      el("circle", { cx: 0, cy: -230, r: 4.5, fill: hub, stroke: gold, "stroke-width": 1 }, s);
+      el("circle", { cx: 0, cy: -230, r: 4.5, fill: hub, stroke: gold, "stroke-width": 1, "class": "pt" }, s);
     }
     el("circle", { r: 252, fill: "none", stroke: gold, "stroke-width": 1 });
     var inner = el("g", { "class": "turn-back" });
@@ -359,6 +375,7 @@
     el("circle", { r: 116, fill: hub, stroke: gold, "stroke-width": 1.2 });
     el("circle", { r: 108, fill: "none", stroke: faint });
     el("use", { href: "#mark", x: -100, y: -100, width: 200, height: 200 });
+    el("circle", { r: 72, fill: "none", stroke: "var(--tear-glow)", "stroke-width": 2, "class": "hub-beat" });
 
     // the outer ring of eighteen petals turns; two petals hold the revealed truths
     var outer = el("g", { "class": "turn" });
@@ -366,7 +383,7 @@
     var lit = [];
     for (var i = 0; i < 18; i++) {
       var g = el("g", { transform: "rotate(" + (i * 20) + ")" }, outer);
-      var petal = el("path", { d: PETAL, fill: "var(--wheel-petal)", stroke: gold, "stroke-width": 1 }, g);
+      var petal = el("path", { d: PETAL, fill: "var(--wheel-petal)", stroke: gold, "stroke-width": 1, "class": "petal" }, g);
       el("title", {}, petal).textContent = "A truth not yet revealed";
       var tr = TRUTHS[i];
       if (!tr) continue;
@@ -379,7 +396,9 @@
         el("use", { href: "#icon-sealed", x: -13, y: -315, width: 26, height: 26 }, seal);
         continue;
       }
-      var link = el("a", { href: tr.href, "class": "truth", "data-status": tr.status, "aria-label": tr.label + ": open its page" }, g);
+      var seenKey = "truth-" + i, fresh = !!window.DIVYARANN_RELEASED && !(PROG.seen && PROG.seen[seenKey]);
+      var link = el("a", { href: tr.href, "class": "truth" + (fresh ? " unsealing" : ""), "data-status": tr.status, "aria-label": tr.label + ": open its page" }, g);
+      if (fresh) { PROG.seen = PROG.seen || {}; PROG.seen[seenKey] = 1; try { localStorage.setItem("divyarann-progress", JSON.stringify(PROG)); } catch (e) {} }
       el("title", {}, link).textContent = tr.label;
       el("path", { d: PETAL, transform: "translate(0,-302) scale(1.16) translate(0,302)", fill: "var(--truth-fill)", stroke: "var(--truth-line)", "stroke-width": 1.2, "class": "truth-petal" }, link);
       el("circle", { cx: 0, cy: -302, r: 26, fill: "var(--tear-glow)", opacity: .38, filter: "url(#wglow)", "class": "truth-glow" }, link);
@@ -454,6 +473,12 @@
       pins = pins.filter(function (p) { return p > 20 && p < end - 20 && (!hub || p < hub.top - 12 || p > hub.bottom + 12); }).sort(function (a, b) { return a - b; });
       var hero = torn.querySelector(".hero"), heroB = hero ? hero.getBoundingClientRect().bottom - T.top : 600;
       var c = crack(x0, end, pins, hub, heroB * 0.5, mobile ? 0.7 : 1);
+      var litEnd = end, tl = torn.querySelector(".timeline");
+      if (tl) {
+        var open = tl.querySelectorAll(".entry:not(.is-locked)"), readE = tl.querySelectorAll(".entry.is-read");
+        if (!readE.length) { var sh = torn.querySelector(".saga-head"); litEnd = sh ? Math.round(sh.getBoundingClientRect().bottom - T.top + 24) : end; }
+        else if (readE.length < open.length) { var nb = readE[readE.length - 1].querySelector(".node").getBoundingClientRect(); litEnd = Math.round(nb.top + nb.height / 2 - T.top); }
+      }
       var BW = 200, ox = x0 - BW / 2, H = end + 60;
       var svg = el("svg", { "class": "tear", width: BW, height: H, viewBox: "0 0 " + BW + " " + H, focusable: "false" });
       svg.style.left = ox + "px";
@@ -475,7 +500,11 @@
         el("rect", { x: 0, y: t0, width: BW, height: t1 - t0, fill: "url(#tearHush" + i + ")" }, mask);
       });
       var P = c.pts.map(function (p) { return (p[0] - ox).toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
-      var g = el("g", { mask: "url(#tearMask)" }, svg);
+      var clip = el("clipPath", { id: "tearLit", clipPathUnits: "userSpaceOnUse" }, defs);
+      el("rect", { x: 0, y: -60, width: BW, height: litEnd + 60 }, clip);
+      var gm = el("g", { mask: "url(#tearMask)" }, svg);
+      if (litEnd < end) el("polyline", { points: P, fill: "none", stroke: "var(--line-strong)", "stroke-width": 1, "stroke-linejoin": "round" }, gm);
+      var g = el("g", { "clip-path": "url(#tearLit)" }, gm);
       el("polyline", { points: P, fill: "none", stroke: "var(--tear)", "stroke-width": 16, "stroke-linejoin": "round", opacity: .42, filter: "url(#tearBloom)", "class": "bloom" }, g);
       el("polyline", { points: P, fill: "none", stroke: "var(--tear-glow)", "stroke-width": 2.8, "stroke-linejoin": "round", opacity: .9, filter: "url(#tearSoft)" }, g);
       if (c.branches.length) {
@@ -483,10 +512,30 @@
         el("path", { d: d, fill: "none", stroke: "var(--tear-glow)", "stroke-width": 1, "stroke-linecap": "round", opacity: .65 }, g);
       }
       el("polyline", { points: P, fill: "none", stroke: "var(--tear-core)", "stroke-width": 1.15, "stroke-linejoin": "round" }, g);
-      var ex = x0 - ox;   // where the tear comes to rest
-      el("circle", { cx: ex, cy: end, r: 20, fill: "var(--tear)", opacity: .6, filter: "url(#tearBloom)" }, svg);
-      if (!mobile) el("line", { x1: ex - 70, y1: end, x2: ex + 70, y2: end, stroke: "url(#tearGlint)", "stroke-width": 1.2 }, svg);
-      el("circle", { cx: ex, cy: end, r: 2.8, fill: "var(--tear-core)" }, svg);
+      var ex = x0 - ox;
+      function xAt(y) { var p = c.pts; for (var i = 1; i < p.length; i++) if (p[i][1] >= y) { var u = (y - p[i - 1][1]) / Math.max(1, p[i][1] - p[i - 1][1]); return p[i - 1][0] + (p[i][0] - p[i - 1][0]) * u; } return p[p.length - 1][0]; }
+      if (litEnd >= end) {   // the whole tear is lit: it comes to rest on the follow box
+        el("circle", { cx: ex, cy: end, r: 20, fill: "var(--tear)", opacity: .6, filter: "url(#tearBloom)" }, svg);
+        if (!mobile) el("line", { x1: ex - 70, y1: end, x2: ex + 70, y2: end, stroke: "url(#tearGlint)", "stroke-width": 1.2 }, svg);
+        el("circle", { cx: ex, cy: end, r: 2.8, fill: "var(--tear-core)" }, svg);
+      } else {               // the light stops where the reader stopped
+        var tx = xAt(litEnd) - ox;
+        el("circle", { cx: tx, cy: litEnd, r: 16, fill: "var(--tear)", opacity: .7, filter: "url(#tearBloom)" }, svg);
+        el("circle", { cx: tx, cy: litEnd, r: 2.6, fill: "var(--tear-core)" }, svg);
+      }
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        var lp = c.pts.filter(function (p) { return p[1] <= litEnd; });
+        if (litEnd < end) lp.push([xAt(litEnd), litEnd]);
+        if (lp.length > 2) {
+          var d = "M" + lp.map(function (p) { return (p[0] - ox).toFixed(1) + "," + p[1].toFixed(1); }).join(" L");
+          var per = getComputedStyle(document.documentElement).getPropertyValue("--pulse-period").trim() || "6s";
+          var dur = (parseFloat(per) * Math.max(1, litEnd / 900)).toFixed(2) + "s";
+          [[10, "var(--tear)", .55, "url(#tearBloom)"], [2.4, "var(--tear-core)", 1, null]].forEach(function (s) {
+            var dot = el("circle", { r: s[0], fill: s[1], opacity: s[2] }, svg); if (s[3]) dot.setAttribute("filter", s[3]);
+            el("animateMotion", { dur: dur, repeatCount: "indefinite", path: d, keyTimes: "0;1", keyPoints: "0;1", calcMode: "linear" }, dot);
+          });
+        }
+      }
       wrap.replaceChildren(svg);
     }
     var raf = 0;
@@ -495,6 +544,7 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
     window.addEventListener("load", schedule);
     window.addEventListener("hashchange", schedule);
+    window.addEventListener("dv:progress", schedule);
     if (window.ResizeObserver) new ResizeObserver(schedule).observe(torn); else window.addEventListener("resize", schedule);
   })();
 
@@ -538,13 +588,7 @@
 
 })();
 </script>
-<script>
-(function () {
-  var last = null; try { last = localStorage.getItem("divyarann-last"); } catch (e) {}
-  var el = document.getElementById("continue");
-  if (el && last && last !== "1") { el.hidden = false; var a = document.getElementById("continue-link"); a.href = "/read/" + last + "/"; a.textContent = "Chapter " + last; }
-})();
-</script>
+
 <script>
 (function () {
   if (window.__dvPalette) return; window.__dvPalette = true;

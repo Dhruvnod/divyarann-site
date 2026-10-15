@@ -6,7 +6,7 @@
 <title>Welcome to Divyarann · Divyarann</title>
 <meta name="description" content="Each new chapter will arrive in your inbox on the day it is released.">
 <meta name="theme-color" content="#07060f">
-<script>(function(){try{var q=/[?&]palette=(akash|grahan)/.exec(location.search),p=q?q[1]:localStorage.getItem("divyarann-palette");if(q)localStorage.setItem("divyarann-palette",p);if(p==="grahan"||p==="akash")document.documentElement.setAttribute("data-palette",p);}catch(e){}})();</script>
+<script>(function(){var d=document.documentElement;try{var q=/[?&]palette=(akash|grahan)/.exec(location.search),p=q?q[1]:localStorage.getItem("divyarann-palette");if(q)localStorage.setItem("divyarann-palette",p);if(p==="grahan"||p==="akash")d.setAttribute("data-palette",p);var r=JSON.parse(localStorage.getItem("divyarann-reading")||"{}");if(r.theme&&r.theme!=="night")d.setAttribute("data-read-theme",r.theme);if(r.font&&r.font!=="book")d.setAttribute("data-read-font",r.font);if(r.space&&r.space!=="normal")d.setAttribute("data-read-space",r.space);if(r.words)d.setAttribute("data-words","on");}catch(e){}var h=new Date().getHours();d.setAttribute("data-sky",h>=5&&h<8?"dawn":h>=8&&h<17?"day":h>=17&&h<20?"dusk":"night");})();</script>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="Divyarann: new chapters" href="/feed.xml">
@@ -20,8 +20,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Marcellus+SC&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/dv.js" defer></script>
 <meta name="robots" content="noindex">
 </head>
 <body>
@@ -73,12 +74,14 @@
 </symbol>
 </defs>
 </svg>
+
 <header class="bar">
   <div class="bar-in">
     <a class="brand" href="/" aria-label="Divyarann home"><svg aria-hidden="true"><use href="#mark"/></svg><b>DIVYARANN</b></a>
     <nav aria-label="Pages">
       <a href="/">Home</a>
       <a href="/read/">Read</a>
+      <a href="/codex/">Codex</a>
       <a href="/#story">The Story</a>
       <a href="/#tears">The Tears</a>
       <a href="/#powers">Powers &amp; Abilities</a>
