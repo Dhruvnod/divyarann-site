@@ -364,7 +364,7 @@
     el("circle", { r: 360, fill: "none", stroke: faint });
 
     // spokes and their points stay still
-    var spokes = el("g", {});
+    var spokes = el("g", { "class": "spokes" });
     for (var j = 0; j < 18; j++) {
       var s = el("g", { transform: "rotate(" + (j * 20) + ")" }, spokes);
       el("line", { x1: 0, y1: -252, x2: 0, y2: -112, stroke: faint, "stroke-width": 1 }, s);

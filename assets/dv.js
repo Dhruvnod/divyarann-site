@@ -132,20 +132,55 @@
   }
   function livingWheel() {
     var wrap = document.querySelector(".hero .wheel-wrap"); if (!wrap || reduced) return;
-    var tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
-    function apply() { cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08; wrap.style.transform = "perspective(1100px) rotateX(" + cy.toFixed(2) + "deg) rotateY(" + cx.toFixed(2) + "deg)"; if (Math.abs(tx - cx) > 0.01 || Math.abs(ty - cy) > 0.01) raf = requestAnimationFrame(apply); else raf = 0; }
+    var svg = wrap.querySelector("svg.wheel"), tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+    function apply() {
+      cx += (tx - cx) * 0.1; cy += (ty - cy) * 0.1;
+      wrap.style.transform = "perspective(900px) rotateX(" + cy.toFixed(2) + "deg) rotateY(" + cx.toFixed(2) + "deg)";
+      if (svg) { svg.style.setProperty("--px", cx.toFixed(2)); svg.style.setProperty("--py", (-cy).toFixed(2)); }  // the rings shift by different amounts
+      if (Math.abs(tx - cx) > 0.01 || Math.abs(ty - cy) > 0.01) raf = requestAnimationFrame(apply); else raf = 0;
+    }
     function aim(x, y) { tx = x; ty = y; if (!raf) raf = requestAnimationFrame(apply); }
     window.addEventListener("pointermove", function (e) {
       if (e.pointerType !== "mouse") return;
       var r = wrap.getBoundingClientRect(), dx = (e.clientX - (r.left + r.width / 2)) / window.innerWidth, dy = (e.clientY - (r.top + r.height / 2)) / window.innerHeight;
-      aim(Math.max(-1, Math.min(1, dx)) * 9, Math.max(-1, Math.min(1, -dy)) * 7);
+      aim(Math.max(-1, Math.min(1, dx)) * 12, Math.max(-1, Math.min(1, -dy)) * 10);
     }, { passive: true });
-    function orient(e) { if (e.gamma == null) return; aim(Math.max(-20, Math.min(20, e.gamma)) / 20 * 8, Math.max(-20, Math.min(20, (e.beta || 45) - 45)) / 20 * -6); }
-    if (window.DeviceOrientationEvent) {
-      if (typeof DeviceOrientationEvent.requestPermission === "function") {
-        wrap.addEventListener("click", function once() { wrap.removeEventListener("click", once); DeviceOrientationEvent.requestPermission().then(function (s) { if (s === "granted") window.addEventListener("deviceorientation", orient); }).catch(function () {}); });
-      } else window.addEventListener("deviceorientation", orient);
+
+    // phones: the wheel follows the tilt, measured from however the reader is holding the phone
+    var base = null;
+    function orient(e) {
+      if (e.gamma == null || e.beta == null) return;
+      if (base === null) base = e.beta;
+      base += (e.beta - base) * 0.004;   // slowly re-centre, so a new way of holding the phone becomes the rest position
+      var gx = Math.max(-25, Math.min(25, e.gamma)), by = Math.max(-25, Math.min(25, e.beta - base));
+      aim(gx / 25 * 14, -by / 25 * 12);
     }
+    function listen() { window.addEventListener("deviceorientation", orient); }
+    var D = window.DeviceOrientationEvent;
+    if (!D) return;
+    if (typeof D.requestPermission !== "function") { listen(); return; }   // Android and most browsers: no permission needed
+    // iPhone and iPad Safari only send motion after the reader allows it, from a tap
+    var touch = ("ontouchstart" in window) || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    if (!touch) return;
+    var state = null; try { state = localStorage.getItem("divyarann-tilt"); } catch (e) {}
+    if (state === "denied") return;
+    var btn = null;
+    function ask() {
+      return D.requestPermission().then(function (s) {
+        try { localStorage.setItem("divyarann-tilt", s); } catch (e) {}
+        if (s === "granted") listen();
+        if (btn) { btn.remove(); btn = null; }
+      }).catch(function () {});
+    }
+    if (state === "granted") {   // allowed before: Safari still wants a tap before it sends motion, so the first tap resumes it
+      var resume = function () { document.removeEventListener("touchend", resume); ask(); };
+      document.addEventListener("touchend", resume, { passive: true });
+      return;
+    }
+    btn = el("button", "dv-tilt", '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.6 6.2c-.9 1.2-.9 2.4 0 3.6M14.4 6.2c.9 1.2.9 2.4 0 3.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Tilt to move the wheel');
+    btn.type = "button";
+    btn.addEventListener("click", ask);
+    wrap.appendChild(btn);
   }
 
   // ---------- Contents page: progress per chapter, and marking chapters you read elsewhere ----------
