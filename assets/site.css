@@ -475,6 +475,14 @@ svg.vortex { width: 100%; max-width: 460px; height: auto; overflow: visible; }
 html, body { margin: 0; }
 img { max-width: 100%; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 12px; top: -80px; z-index: 100; background: var(--ink); color: var(--night); padding: 8px 14px; font-family: var(--font-caps); font-weight: 600; letter-spacing: 0.12em; font-size: 13px; text-transform: uppercase; text-decoration: none; }
+.skip:focus { top: calc(10px + env(safe-area-inset-top, 0px)); }
+.foot-links a { color: var(--label); }
+.about .about-sec { display: grid; gap: 12px; }
+.about .about-sec h2 { font-size: 26px; }
+.about .about-sec h2::after { content: none; }
+.about .about-sec p { font-size: 18px; line-height: 1.65; color: var(--text); }
+.about .about-sec a { color: var(--label); }
 .draft-note { font-family: var(--font-data); font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
 
 /* Home: the released chapters hang on the tear */

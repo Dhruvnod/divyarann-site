@@ -171,7 +171,7 @@
 
   // ---------- Codex page: the four, the map, and everything you have collected ----------
   function codexPage() {
-    var host = document.getElementById("dv-codex"); if (!host) return;
+    var host = document.getElementById("dv-cards"); if (!host) return;
     var reached = DV.reached(), cards = DATA.cards || [], entries = DATA.entries || [], places = DATA.places || [];
     var sum = document.getElementById("dv-codex-sum");
     var openE = entries.filter(function (e) { return e.ch <= reached; }).length;
@@ -326,7 +326,8 @@
           return vs.filter(function (v) { return /en[-_]IN/i.test(v.lang); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs.filter(function (v) { return /^en/i.test(v.lang); })[0] || vs[0];
         }
         speechSynthesis.onvoiceschanged = function () { voice = pickVoice(); };
-        function chunks(text) { var out = [], cur = ""; text.split(/(?<=[.!?…”"])\s+/).forEach(function (s) { if ((cur + " " + s).length > 220 && cur) { out.push(cur); cur = s; } else cur = cur ? cur + " " + s : s; }); if (cur) out.push(cur); return out; }
+        // sentences without regex lookbehind, which older iPhones (Safari before 16.4) cannot parse
+        function chunks(text) { var out = [], cur = "", parts = text.match(/[^.!?…]+(?:[.!?…]+["”’]?|$)\s*/g) || [text]; parts.forEach(function (s) { s = s.trim(); if (!s) return; if ((cur + " " + s).length > 220 && cur) { out.push(cur); cur = s; } else cur = cur ? cur + " " + s : s; }); if (cur) out.push(cur); return out; }
         function clearMark() { paras.forEach(function (p) { p.classList.remove("dv-speaking"); }); }
         function say(i) {
           if (!playing || i >= paras.length) { stop(); if (i >= paras.length) finish(); return; }
