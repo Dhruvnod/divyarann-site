@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Divyarann · Book One: Vinash</title>
 <meta name="description" content="The companion site to DIVYARANN, Book One: Vinash. Read the chapters free online, and explore the story, the tears in the sky and the powers as they are revealed.">
-<meta name="theme-color" content="#0a0e22">
+<meta name="theme-color" content="#07060f">
+<script>(function(){try{var q=/[?&]palette=(akash|grahan)/.exec(location.search),p=q?q[1]:localStorage.getItem("divyarann-palette");if(q)localStorage.setItem("divyarann-palette",p);if(p==="grahan"||p==="akash")document.documentElement.setAttribute("data-palette",p);}catch(e){}})();</script>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="Divyarann: new chapters" href="/feed.xml">
@@ -26,19 +27,19 @@
 <body>
 <svg aria-hidden="true" focusable="false" height="0" style="position:absolute" width="0">
 <defs>
-<lineargradient gradientunits="userSpaceOnUse" id="markGold" x1="0" x2="0" y1="-100" y2="100"><stop offset="0" stop-color="#f6e7bd"></stop><stop offset=".55" stop-color="#d8b56f"></stop><stop offset="1" stop-color="#a47e3b"></stop></lineargradient>
+<lineargradient gradientunits="userSpaceOnUse" id="markGold" x1="0" x2="0" y1="-100" y2="100"><stop offset="0" style="stop-color:var(--mark-1)"></stop><stop offset=".55" style="stop-color:var(--mark-2)"></stop><stop offset="1" style="stop-color:var(--mark-3)"></stop></lineargradient>
 <filter height="260%" id="markGlow" width="260%" x="-80%" y="-80%"><fegaussianblur stddeviation="4"></fegaussianblur></filter>
 <symbol id="icon-bow" viewbox="-100 -100 200 200">
 <line filter="url(#markGlow)" opacity=".55" stroke="#8a5cff" stroke-width="9" x1="-46" x2="-46" y1="-80" y2="80"></line>
 <line stroke="#efe6ff" stroke-width="3" x1="-46" x2="-46" y1="-80" y2="80"></line>
 <path d="M -46,-80 Q -32,-92 -16,-86 C 30,-70 52,-40 52,0 C 52,40 30,70 -16,86 Q -32,92 -46,80 Q -32,86 -18,80 C 22,64 40,38 40,0 C 40,-38 22,-64 -18,-80 Q -32,-86 -46,-80 Z" fill="url(#markGold)"></path>
-<path d="M -46,-80 q -10,-3 -10,-15" fill="none" stroke="#d8b56f" stroke-linecap="round" stroke-width="5"></path>
-<path d="M -46,80 q -10,3 -10,15" fill="none" stroke="#d8b56f" stroke-linecap="round" stroke-width="5"></path>
+<path d="M -46,-80 q -10,-3 -10,-15" fill="none" stroke-linecap="round" stroke-width="5" style="stroke:var(--mark-2)"></path>
+<path d="M -46,80 q -10,3 -10,15" fill="none" stroke-linecap="round" stroke-width="5" style="stroke:var(--mark-2)"></path>
 <path d="M 46,-13 C 53,-5 53,5 46,13 C 39,5 39,-5 46,-13 Z" fill="#a382ff" stroke="#f0e2bc" stroke-width="1.5"></path>
 </symbol>
 <symbol id="icon-sealed" viewbox="-100 -100 200 200">
-<path d="M 0,-64 C 34,-30 34,30 0,64 C -34,30 -34,-30 0,-64 Z" fill="none" opacity=".75" stroke="#d8b56f" stroke-width="7"></path>
-<line opacity=".8" stroke="#8a5cff" stroke-linecap="round" stroke-width="6" x1="0" x2="0" y1="-38" y2="38"></line>
+<path d="M 0,-64 C 34,-30 34,30 0,64 C -34,30 -34,-30 0,-64 Z" fill="none" opacity=".75" stroke-width="7" style="stroke:var(--mark-2)"></path>
+<line opacity=".8" stroke-linecap="round" stroke-width="6" style="stroke:var(--mark-tear-glow)" x1="0" x2="0" y1="-38" y2="38"></line>
 </symbol>
 <symbol id="icon-chakra" viewbox="-100 -100 200 200">
 <path d="M 95.00,0.00 L 92.70,9.33 L 89.50,18.21 L 85.46,26.54 L 80.67,34.24 L 75.20,41.26 L 69.15,47.52 L 62.61,53.00 L 55.67,57.65 L 48.44,61.45 L 41.02,64.39 L 33.50,66.47 L 25.98,67.69 L 18.56,68.09 L 11.33,67.69 L 4.36,66.53 L -2.26,64.67 L -8.46,62.16 L -14.18,59.06 L -19.36,55.45 L -23.97,51.40 L -27.96,46.99 L -31.30,42.30 L -33.99,37.42 L -36.02,32.43 L -37.39,27.41 L -38.11,22.45 L -38.22,17.62 L -37.73,12.99 L -36.70,8.64 L -35.17,4.63 L -33.19,1.01 L -30.82,-2.16 L -28.13,-4.83 L -25.20,-6.99 L -22.07,-8.58 L -18.84,-9.60 L -15.57,-10.01 L -12.32,-9.80 L -9.12,-8.89 L -5.79,-6.89" fill="none" stroke="url(#markGold)" stroke-linecap="round" stroke-width="5"></path>
@@ -54,25 +55,26 @@
 </symbol>
 <symbol id="mark" viewbox="-100 -100 200 200">
 <circle fill="none" opacity=".5" r="94" stroke="url(#markGold)" stroke-width="1.4"></circle>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(0)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(36)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(72)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(108)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(144)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(180)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(216)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(252)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(288)"></path>
-<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" fill="rgba(216,181,111,.10)" stroke="url(#markGold)" stroke-width="1.6" transform="rotate(324)"></path>
-<circle fill="#0a0e22" r="50" stroke="url(#markGold)" stroke-width="2"></circle>
-<polygon fill="rgba(138,92,255,.16)" points="-34.6,-20 34.6,-20 0,40" stroke="url(#markGold)" stroke-linejoin="round" stroke-width="2.6"></polygon>
-<polyline fill="none" filter="url(#markGlow)" opacity=".6" points="0,-46 4,-30 -3,-16 4,0 -3,14 3,28 0,44" stroke="#8a5cff" stroke-width="6"></polyline>
-<polyline fill="none" points="0,-46 4,-30 -3,-16 4,0 -3,14 3,28 0,44" stroke="#f1eaff" stroke-width="1.5"></polyline>
-<circle cx="0" cy="0" fill="#b38cff" r="5"></circle>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(0)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(36)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(72)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(108)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(144)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(180)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(216)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(252)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(288)"></path>
+<path d="M 0,-52 C 15,-62 17,-77 0,-89 C -17,-77 -15,-62 0,-52 Z" stroke="url(#markGold)" stroke-width="1.6" style="fill:var(--mark-petal)" transform="rotate(324)"></path>
+<circle r="50" stroke="url(#markGold)" stroke-width="2" style="fill:var(--night-2)"></circle>
+<polygon points="-34.6,-20 34.6,-20 0,40" stroke="url(#markGold)" stroke-linejoin="round" stroke-width="2.6" style="fill:var(--mark-tri)"></polygon>
+<polyline fill="none" filter="url(#markGlow)" opacity=".6" points="0,-46 4,-30 -3,-16 4,0 -3,14 3,28 0,44" stroke-width="6" style="stroke:var(--mark-tear-glow)"></polyline>
+<polyline fill="none" points="0,-46 4,-30 -3,-16 4,0 -3,14 3,28 0,44" stroke-width="1.5" style="stroke:var(--mark-tear-line)"></polyline>
+<circle cx="0" cy="0" r="5" style="fill:var(--mark-core)"></circle>
 </symbol>
 </defs>
 </svg>
 
+<script>(function(){try{var p=localStorage.getItem("divyarann-palette");if(p==="grahan"||p==="akash")document.documentElement.setAttribute("data-palette",p);}catch(e){}})();</script>
 
 
 
@@ -87,23 +89,89 @@
 <a data-nav="tears" href="#tears">The Tears</a>
 <a data-nav="powers" href="#powers">Powers &amp; Abilities</a>
 </nav>
+<div class="bar-tools">
 
+<div aria-label="Colours" class="palette" role="group"><button aria-label="Akash colours: violet and silver" aria-pressed="true" data-palette="akash" title="Akash: violet and silver" type="button"><span class="dot"></span><span class="pl">Akash</span></button><button aria-label="Grahan colours: crimson and brass" aria-pressed="false" data-palette="grahan" title="Grahan: crimson and brass" type="button"><span class="dot"></span><span class="pl">Grahan</span></button></div>
+</div>
 </div>
 </header>
 <main class="wrap">
 
-<section class="page" data-page="home" id="page-home">
+<section class="page torn" data-page="home" id="page-home">
+<div aria-hidden="true" class="sky"></div>
+<div aria-hidden="true" class="tear-wrap" id="tearWrap"></div>
 <div class="hero">
-<div class="hero-text">
+<div class="wheel-wrap"><svg aria-label="A wheel of eighteen points, the Eighteen Truths, with the Manipura lotus at its hub" class="wheel" id="wheel" viewbox="-380 -380 760 760"></svg></div>
+<div class="hero-text" data-hush="">
 <div class="eyebrow">Book One · Vinash · <span class="deva">विनाश</span></div>
 <h1>Divyarann</h1>
 <div class="deva hero-deva">दिव्यारण</div>
 <p class="lede">Seven tears open in the sky, one on each continent. Under the one above Dwarka, four ordinary people awaken: a man running his late father’s shop on borrowed money, an engineer who reads patterns nobody else trusts, an analyst who keeps everyone together, and an engineer who builds.</p>
 <div class="cta"><a class="btn" href="/read/1/">Start reading</a><a class="btn line" href="/read/">All chapters</a></div><p class="continue" hidden="" id="continue">Continue from <a href="#" id="continue-link">Chapter</a></p>
 </div>
-<div class="wheel-wrap"><svg aria-label="A wheel of eighteen points, the Eighteen Truths, with the Manipura lotus at its hub" class="wheel" id="wheel" viewbox="-380 -380 760 760"></svg></div>
 </div>
-<div class="stats"><div class="stat"><b>5</b><span>chapters released</span></div><div class="stat"><b>6</b><span>next chapter</span></div><div class="stat"><b>TBA</b><span>release date to be announced</span></div></div>
+<section aria-labelledby="saga-h" class="saga" id="chapters">
+<header class="saga-head" data-hush="">
+<p class="eyebrow">Vinash · <span class="deva" lang="sa">विनाश</span></p>
+<h2 id="saga-h">Book One so far</h2>
+<p>Five chapters released so far. Each is titled with one Sanskrit word.</p>
+</header>
+<ol class="timeline">
+<li class="entry l">
+<span aria-hidden="true" class="node"><span class="deva">१</span></span>
+<a class="tl-card" href="/read/1/">
+<span class="tl-top"><span class="tl-label">Chapter One</span><span class="tl-pov">Samyukt</span></span>
+<span class="tl-name"><span class="tl-title">Adya</span><span class="deva" lang="sa">आद्य</span><span class="tl-gloss">the beginning</span></span>
+<span class="tl-sum">A shop kept alive on borrowed money, and the first news of seismic signals with no earthquake behind them.</span>
+<span class="tl-go">Read chapter one →</span>
+</a>
+</li>
+<li class="entry r">
+<span aria-hidden="true" class="node"><span class="deva">२</span></span>
+<a class="tl-card" href="/read/2/">
+<span class="tl-top"><span class="tl-label">Chapter Two</span><span class="tl-pov">Kairavi</span></span>
+<span class="tl-name"><span class="tl-title">Aakanksha</span><span class="deva" lang="sa">आकांक्षा</span><span class="tl-gloss">aspiration</span></span>
+<span class="tl-sum">Kairavi lines up four seismic stations overnight and finds the pulses are speeding up. By morning she has a fever.</span>
+<span class="tl-go">Read chapter two →</span>
+</a>
+</li>
+<li class="entry l">
+<span aria-hidden="true" class="node"><span class="deva">३</span></span>
+<a class="tl-card" href="/read/3/">
+<span class="tl-top"><span class="tl-label">Chapter Three</span><span class="tl-pov">Raghav, then Kabir</span></span>
+<span class="tl-name"><span class="tl-title">Spandan</span><span class="deva" lang="sa">स्पंदन</span><span class="tl-gloss">the pulse</span></span>
+<span class="tl-sum">Dinner at the shop becomes the talk about money the three friends have avoided, until a pulse dims the lights.</span>
+<span class="tl-go">Read chapter three →</span>
+</a>
+</li>
+<li class="entry r">
+<span aria-hidden="true" class="node"><span class="deva">४</span></span>
+<a class="tl-card" href="/read/4/">
+<span class="tl-top"><span class="tl-label">Chapter Four</span><span class="tl-pov">Samyukt</span></span>
+<span class="tl-name"><span class="tl-title">Aahvan</span><span class="deva" lang="sa">आह्वान</span><span class="tl-gloss">the summons</span></span>
+<span class="tl-sum">Twelve days of fever and normal test results, then a dream of an ash plain under a fractured sky.</span>
+<span class="tl-go">Read chapter four →</span>
+</a>
+</li>
+<li class="entry l">
+<span aria-hidden="true" class="node"><span class="deva">५</span></span>
+<a class="tl-card" href="/read/5/">
+<span class="tl-top"><span class="tl-label">Chapter Five</span><span class="tl-pov">Kairavi</span></span>
+<span class="tl-name"><span class="tl-title">Lakshan</span><span class="deva" lang="sa">लक्षण</span><span class="tl-gloss">the sign</span></span>
+<span class="tl-sum">During a pulse at the office, Kairavi sees faint lines of strain along the glass.</span>
+<span class="tl-go">Read chapter five →</span>
+</a>
+</li>
+<li class="entry r">
+<span aria-hidden="true" class="node locked"><span class="deva">६</span></span>
+<div class="tl-card locked">
+<span class="tl-top"><span class="tl-label">Chapter Six</span><span class="tl-pov">Locked</span></span>
+<span class="tl-name"><span class="tl-title">Jagaran</span><span class="deva" lang="sa">जागरण</span><span class="tl-gloss">awakening</span></span>
+<span class="tl-when">Date to be announced</span>
+</div>
+</li>
+</ol>
+</section>
 <div class="doors">
 <a class="door" href="#story">
 <span class="eyebrow">Summary</span>
@@ -111,7 +179,7 @@
 <p class="small">Book One so far, chapter by chapter.</p>
 <span class="go">Read the story →</span>
 </a>
-<a class="door" href="#tears">
+<a class="door mid" data-pin="top bottom" href="#tears">
 <span class="eyebrow">Atlas</span>
 <h2>The Seven Tears</h2>
 <p class="small">Where the sky opens, and what comes through, as the story reaches it.</p>
@@ -125,7 +193,7 @@
 </a>
 </div>
 
-<section aria-label="Follow the story" class="follow">
+<section aria-label="Follow the story" class="follow" id="follow">
 <h2>Follow the story</h2>
 <p>Chapter 6, Jagaran, is on its way. Its date will be announced here.</p>
 <form action="https://app.kit.com/forms/10046604/subscriptions" method="post">
@@ -260,8 +328,8 @@
   (function () {
     var NS = "http://www.w3.org/2000/svg", svg = document.getElementById("wheel");
     if (!svg) return;
-    function el(name, attrs, parent) { var e = document.createElementNS(NS, name); for (var k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; }
-    var gold = "#d8b56f", faint = "rgba(216,181,111,.26)";
+    function el(name, attrs, parent) { var e = document.createElementNS(NS, name); for (var k in attrs) { var v = attrs[k]; if (typeof v === "string" && v.indexOf("var(") === 0) e.style.setProperty(k, v); else e.setAttribute(k, v); } (parent || svg).appendChild(e); return e; }
+    var gold = "var(--wheel-line)", faint = "var(--wheel-faint)", hub = "var(--night)";
     var PETAL = "M0,-342 C 26,-318 30,-292 0,-262 C -30,-292 -26,-318 0,-342 Z";
     var RELEASED = window.DIVYARANN_RELEASED || 999;  // the public site sets this to the last released chapter
     var TRUTHS = {
@@ -271,7 +339,7 @@
     var defs = el("defs", {});
     var glow = el("filter", { id: "wglow", x: "-60%", y: "-60%", width: "220%", height: "220%" }, defs); el("feGaussianBlur", { stdDeviation: 6 }, glow);
     var halo = el("radialGradient", { id: "whalo" }, defs);
-    el("stop", { offset: "0", "stop-color": "#2a2f73", "stop-opacity": ".75" }, halo); el("stop", { offset: "1", "stop-color": "#0a0e22", "stop-opacity": "0" }, halo);
+    el("stop", { offset: "0", "stop-color": "var(--wheel-halo-1)", "stop-opacity": ".8" }, halo); el("stop", { offset: ".55", "stop-color": "var(--wheel-halo-2)", "stop-opacity": ".55" }, halo); el("stop", { offset: "1", "stop-color": "var(--night)", "stop-opacity": "0" }, halo);
     el("circle", { r: 372, fill: "url(#whalo)" });
     el("circle", { r: 360, fill: "none", stroke: faint });
 
@@ -280,7 +348,7 @@
     for (var j = 0; j < 18; j++) {
       var s = el("g", { transform: "rotate(" + (j * 20) + ")" }, spokes);
       el("line", { x1: 0, y1: -252, x2: 0, y2: -112, stroke: faint, "stroke-width": 1 }, s);
-      el("circle", { cx: 0, cy: -230, r: 4.5, fill: "#0a0e22", stroke: gold, "stroke-width": 1 }, s);
+      el("circle", { cx: 0, cy: -230, r: 4.5, fill: hub, stroke: gold, "stroke-width": 1 }, s);
     }
     el("circle", { r: 252, fill: "none", stroke: gold, "stroke-width": 1 });
     var inner = el("g", { "class": "turn-back" });
@@ -288,7 +356,7 @@
     function tri(rot) { var pts = []; for (var k = 0; k < 3; k++) { var a = (rot + k * 120 - 90) * Math.PI / 180; pts.push((180 * Math.cos(a)).toFixed(1) + "," + (180 * Math.sin(a)).toFixed(1)); } return pts.join(" "); }
     el("polygon", { points: tri(0), fill: "none", stroke: gold, "stroke-width": 1 }, inner);
     el("polygon", { points: tri(60), fill: "none", stroke: gold, "stroke-width": 1 }, inner);
-    el("circle", { r: 116, fill: "#0a0e22", stroke: gold, "stroke-width": 1.2 });
+    el("circle", { r: 116, fill: hub, stroke: gold, "stroke-width": 1.2 });
     el("circle", { r: 108, fill: "none", stroke: faint });
     el("use", { href: "#mark", x: -100, y: -100, width: 200, height: 200 });
 
@@ -298,7 +366,7 @@
     var lit = [];
     for (var i = 0; i < 18; i++) {
       var g = el("g", { transform: "rotate(" + (i * 20) + ")" }, outer);
-      var petal = el("path", { d: PETAL, fill: "rgba(216,181,111,.06)", stroke: gold, "stroke-width": 1 }, g);
+      var petal = el("path", { d: PETAL, fill: "var(--wheel-petal)", stroke: gold, "stroke-width": 1 }, g);
       el("title", {}, petal).textContent = "A truth not yet revealed";
       var tr = TRUTHS[i];
       if (!tr) continue;
@@ -306,16 +374,16 @@
         // sealed: the petal is marked, but the truth inside is not shown or named until its chapter is out
         var seal = el("g", { "class": "truth-sealed", "data-status": tr.status }, g);
         el("title", {}, seal).textContent = "A truth not yet revealed";
-        el("path", { d: PETAL, transform: "translate(0,-302) scale(1.16) translate(0,302)", fill: "rgba(163,130,255,.10)", stroke: "rgba(203,184,255,.55)", "stroke-width": 1, "stroke-dasharray": "3 4" }, seal);
-        el("circle", { cx: 0, cy: -302, r: 19.5, fill: "#0a0e22", stroke: "rgba(226,214,255,.5)", "stroke-width": 1, "stroke-dasharray": "2 3" }, seal);
+        el("path", { d: PETAL, transform: "translate(0,-302) scale(1.16) translate(0,302)", fill: "var(--truth-fill)", stroke: "var(--truth-line)", "stroke-width": 1, "stroke-dasharray": "3 4" }, seal);
+        el("circle", { cx: 0, cy: -302, r: 19.5, fill: hub, stroke: "var(--truth-ring)", "stroke-width": 1, "stroke-dasharray": "2 3" }, seal);
         el("use", { href: "#icon-sealed", x: -13, y: -315, width: 26, height: 26 }, seal);
         continue;
       }
       var link = el("a", { href: tr.href, "class": "truth", "data-status": tr.status, "aria-label": tr.label + ": open its page" }, g);
       el("title", {}, link).textContent = tr.label;
-      el("path", { d: PETAL, transform: "translate(0,-302) scale(1.16) translate(0,302)", fill: "rgba(163,130,255,.22)", stroke: "#cbb8ff", "stroke-width": 1.2, "class": "truth-petal" }, link);
-      el("circle", { cx: 0, cy: -302, r: 26, fill: "#a382ff", opacity: .38, filter: "url(#wglow)", "class": "truth-glow" }, link);
-      el("circle", { cx: 0, cy: -302, r: 19.5, fill: "#0a0e22", stroke: "#e2d6ff", "stroke-width": 1.2, "class": "truth-ring" }, link);
+      el("path", { d: PETAL, transform: "translate(0,-302) scale(1.16) translate(0,302)", fill: "var(--truth-fill)", stroke: "var(--truth-line)", "stroke-width": 1.2, "class": "truth-petal" }, link);
+      el("circle", { cx: 0, cy: -302, r: 26, fill: "var(--tear-glow)", opacity: .38, filter: "url(#wglow)", "class": "truth-glow" }, link);
+      el("circle", { cx: 0, cy: -302, r: 19.5, fill: hub, stroke: "var(--truth-ring)", "stroke-width": 1.2, "class": "truth-ring" }, link);
       el("use", { href: tr.icon, x: -15.5, y: -317.5, width: 31, height: 31 }, link);
       lit.push({ i: i, link: link, tr: tr });
     }
@@ -333,6 +401,121 @@
     });
   })();
 
+
+  // ---------- The tear: one jagged crack from the top of the home page to the follow box ----------
+  (function () {
+    var NS = "http://www.w3.org/2000/svg";
+    var torn = document.getElementById("page-home"), wrap = document.getElementById("tearWrap");
+    if (!torn || !wrap) return;
+    function el(name, attrs, parent) { var e = document.createElementNS(NS, name); for (var k in attrs) { var v = attrs[k]; if (typeof v === "string" && v.indexOf("var(") === 0) e.style.setProperty(k, v); else e.setAttribute(k, v); } if (parent) parent.appendChild(e); return e; }
+    var MARK = [[0, -46], [4, -30], [-3, -16], [4, 0], [-3, 14], [3, 28], [0, 44]];   // the logo's own tear line
+    function rng(seed) { return function () { seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    function crack(x0, end, pins, hub, branchUntil, k) {
+      var r = rng(1907), pts = [[x0, 0]], branches = [], y = 0, side = 1;
+      for (var guard = 0; guard < 4000; guard++) {
+        var ny = y + 20 + r() * 26, pin = null;
+        for (var i = 0; i < pins.length; i++) if (pins[i] > y + 6 && pins[i] <= ny) { pin = pins[i]; break; }
+        if (hub && hub.top > y && hub.top <= ny && (pin === null || hub.top <= pin)) { hub.pts.forEach(function (p) { pts.push(p); }); y = hub.bottom; hub = null; continue; }
+        if (pin !== null) { pts.push([x0, pin]); y = pin; continue; }
+        if (ny >= end - 10) { pts.push([x0, end]); break; }
+        var amp = 1.2 + r() * 2.8;
+        if (r() < 0.14) amp += 1.5 + r() * 2.5;
+        var p = [x0 + side * amp * k, ny];
+        pts.push(p);
+        if (r() < (ny < branchUntil ? 0.3 : 0.06)) {
+          var len = 6 + r() * 13, ang = (35 + r() * 40) * Math.PI / 180;
+          branches.push([p[0], p[1], side * Math.sin(ang) * len, Math.cos(ang) * len]);
+        }
+        side = -side; y = ny;
+      }
+      return { pts: pts, branches: branches };
+    }
+    function build() {
+      if (torn.hidden) return;
+      var T = torn.getBoundingClientRect();
+      if (!T.height) return;
+      var mobile = window.matchMedia("(max-width: 760px)").matches;
+      var x0 = mobile ? (parseFloat(getComputedStyle(torn).getPropertyValue("--tear-x")) || 10) : Math.round(torn.clientWidth / 2);
+      var follow = torn.querySelector("#follow"), endEl = follow || torn.querySelector(".doors") || torn.lastElementChild;
+      var EB = endEl.getBoundingClientRect();
+      var end = Math.round((follow ? EB.top + (mobile ? 30 : 0) : EB.bottom) - T.top);
+      var hub = null, wheel = document.getElementById("wheel");
+      if (!mobile && wheel) {
+        var R = wheel.getBoundingClientRect(), s = R.width / 760;
+        var cx = R.left - T.left + R.width / 2, cy = R.top - T.top + R.height / 2;
+        if (s > 0 && Math.abs(cx - x0) < 6) hub = { top: cy - 46 * s, bottom: cy + 44 * s, pts: MARK.map(function (p) { return [cx + p[0] * s, cy + p[1] * s]; }) };
+      }
+      var pins = [];
+      torn.querySelectorAll("[data-pin]").forEach(function (n) {
+        var b = n.getBoundingClientRect(), w = n.getAttribute("data-pin");
+        if (w.indexOf("top") >= 0) pins.push(b.top - T.top);
+        if (w.indexOf("bottom") >= 0) pins.push(b.bottom - T.top);
+      });
+      pins = pins.filter(function (p) { return p > 20 && p < end - 20 && (!hub || p < hub.top - 12 || p > hub.bottom + 12); }).sort(function (a, b) { return a - b; });
+      var hero = torn.querySelector(".hero"), heroB = hero ? hero.getBoundingClientRect().bottom - T.top : 600;
+      var c = crack(x0, end, pins, hub, heroB * 0.5, mobile ? 0.7 : 1);
+      var BW = 200, ox = x0 - BW / 2, H = end + 60;
+      var svg = el("svg", { "class": "tear", width: BW, height: H, viewBox: "0 0 " + BW + " " + H, focusable: "false" });
+      svg.style.left = ox + "px";
+      var defs = el("defs", {}, svg);
+      function blur(id, sd) { var f = el("filter", { id: id, filterUnits: "userSpaceOnUse", x: 0, y: -60, width: BW, height: H + 120 }, defs); el("feGaussianBlur", { stdDeviation: sd }, f); }
+      blur("tearBloom", 7); blur("tearSoft", 1.4);
+      var fade = el("linearGradient", { id: "tearFade", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0, y2: 120 }, defs);
+      el("stop", { offset: 0, "stop-color": "#000" }, fade); el("stop", { offset: 1, "stop-color": "#fff" }, fade);
+      var glint = el("linearGradient", { id: "tearGlint", gradientUnits: "userSpaceOnUse", x1: BW / 2 - 70, y1: 0, x2: BW / 2 + 70, y2: 0 }, defs);
+      el("stop", { offset: 0, "stop-color": "var(--tear-glow)", "stop-opacity": 0 }, glint); el("stop", { offset: .5, "stop-color": "var(--tear-core)" }, glint); el("stop", { offset: 1, "stop-color": "var(--tear-glow)", "stop-opacity": 0 }, glint);
+      var mask = el("mask", { id: "tearMask", maskUnits: "userSpaceOnUse", x: 0, y: -60, width: BW, height: H + 120 }, defs);
+      el("rect", { x: 0, y: -60, width: BW, height: H + 120, fill: "url(#tearFade)" }, mask);
+      if (!mobile) torn.querySelectorAll("[data-hush]").forEach(function (n, i) {
+        // the tear dims behind words so the text stays clean
+        var b = n.getBoundingClientRect(); if (!b.height) return;
+        var t0 = b.top - T.top - 40, t1 = b.bottom - T.top + 40, k = 56 / Math.max(112, t1 - t0);
+        var hg = el("linearGradient", { id: "tearHush" + i, gradientUnits: "userSpaceOnUse", x1: 0, y1: t0, x2: 0, y2: t1 }, defs);
+        [[0, "#fff"], [k, "#141414"], [1 - k, "#141414"], [1, "#fff"]].forEach(function (st) { el("stop", { offset: st[0], "stop-color": st[1] }, hg); });
+        el("rect", { x: 0, y: t0, width: BW, height: t1 - t0, fill: "url(#tearHush" + i + ")" }, mask);
+      });
+      var P = c.pts.map(function (p) { return (p[0] - ox).toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+      var g = el("g", { mask: "url(#tearMask)" }, svg);
+      el("polyline", { points: P, fill: "none", stroke: "var(--tear)", "stroke-width": 16, "stroke-linejoin": "round", opacity: .42, filter: "url(#tearBloom)", "class": "bloom" }, g);
+      el("polyline", { points: P, fill: "none", stroke: "var(--tear-glow)", "stroke-width": 2.8, "stroke-linejoin": "round", opacity: .9, filter: "url(#tearSoft)" }, g);
+      if (c.branches.length) {
+        var d = c.branches.map(function (b) { return "M" + (b[0] - ox).toFixed(1) + "," + b[1].toFixed(1) + " l" + b[2].toFixed(1) + "," + b[3].toFixed(1); }).join(" ");
+        el("path", { d: d, fill: "none", stroke: "var(--tear-glow)", "stroke-width": 1, "stroke-linecap": "round", opacity: .65 }, g);
+      }
+      el("polyline", { points: P, fill: "none", stroke: "var(--tear-core)", "stroke-width": 1.15, "stroke-linejoin": "round" }, g);
+      var ex = x0 - ox;   // where the tear comes to rest
+      el("circle", { cx: ex, cy: end, r: 20, fill: "var(--tear)", opacity: .6, filter: "url(#tearBloom)" }, svg);
+      if (!mobile) el("line", { x1: ex - 70, y1: end, x2: ex + 70, y2: end, stroke: "url(#tearGlint)", "stroke-width": 1.2 }, svg);
+      el("circle", { cx: ex, cy: end, r: 2.8, fill: "var(--tear-core)" }, svg);
+      wrap.replaceChildren(svg);
+    }
+    var raf = 0;
+    function schedule() { cancelAnimationFrame(raf); raf = requestAnimationFrame(build); }
+    build();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+    window.addEventListener("load", schedule);
+    window.addEventListener("hashchange", schedule);
+    if (window.ResizeObserver) new ResizeObserver(schedule).observe(torn); else window.addEventListener("resize", schedule);
+  })();
+
+  // ---------- Palette switch (Akash / Grahan), remembered on this device ----------
+  (function () {
+    if (window.__dvPalette) return; window.__dvPalette = true;
+    var root = document.documentElement;
+    function current() { return root.getAttribute("data-palette") || "akash"; }
+    function sync() {
+      var c = current();
+      document.querySelectorAll(".palette button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-palette") === c)); });
+      var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", c === "grahan" ? "#0b0708" : "#07060f");
+    }
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest(".palette button"); if (!b) return;
+      var p = b.getAttribute("data-palette"); root.setAttribute("data-palette", p);
+      try { localStorage.setItem("divyarann-palette", p); } catch (err) {}
+      sync();
+    });
+    sync();
+  })();
 
   // ---------- Pages ----------
   var PAGES = ["home", "story", "tears", "powers"].filter(function (id) { return document.getElementById("page-" + id); });
@@ -360,6 +543,25 @@
   var last = null; try { last = localStorage.getItem("divyarann-last"); } catch (e) {}
   var el = document.getElementById("continue");
   if (el && last && last !== "1") { el.hidden = false; var a = document.getElementById("continue-link"); a.href = "/read/" + last + "/"; a.textContent = "Chapter " + last; }
+})();
+</script>
+<script>
+(function () {
+  if (window.__dvPalette) return; window.__dvPalette = true;
+  var root = document.documentElement;
+  function current() { return root.getAttribute("data-palette") || "akash"; }
+  function sync() {
+    var c = current();
+    document.querySelectorAll(".palette button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-palette") === c)); });
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", c === "grahan" ? "#0b0708" : "#07060f");
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".palette button"); if (!b) return;
+    var p = b.getAttribute("data-palette"); root.setAttribute("data-palette", p);
+    try { localStorage.setItem("divyarann-palette", p); } catch (err) {}
+    sync();
+  });
+  sync();
 })();
 </script>
 </body>
