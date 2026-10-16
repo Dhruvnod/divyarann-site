@@ -84,9 +84,12 @@ function boot() {
   const software = /swiftshader|llvmpipe|basic render|software/i.test(gpuName), strong = /nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro/i.test(gpuName);
   const tier = software || !renderer.capabilities.isWebGL2 ? 0 : coarse ? ((navigator.hardwareConcurrency || 4) >= 8 ? 2 : 1) : 3;
   const TIER = [{ px: 0.6e6, n: 6000, oct: 3, bloom: 0.25 }, { px: 0.8e6, n: 14000, oct: 3, bloom: 0.3 }, { px: 1.2e6, n: 22000, oct: 4, bloom: 0.35 }, { px: strong ? 3.4e6 : 1.8e6, n: 30000, oct: 4, bloom: 0.4 }][tier];
-  let Q = software ? 0.75 : 1;   // resolution scale: a discrete GPU always renders sharp; integrated ones may step down a little when frames run late
-  const QMIN = strong ? 1 : software ? 0.6 : 0.8;
-  const dpr = () => Q * Math.min(window.devicePixelRatio || 1, 2, strong ? 99 : Math.sqrt(TIER.px / (window.innerWidth * window.innerHeight)));
+  // resolution: Q scales the screen's own pixel ratio (up to 2). A discrete GPU starts and stays at full sharpness; anything
+  // else starts from its tier's pixel budget and climbs towards full sharpness while frames stay on time, stepping down if they run late
+  const fullPx = () => window.innerWidth * window.innerHeight * Math.pow(Math.min(window.devicePixelRatio || 1, 2), 2);
+  let Q = strong ? 1 : Math.min(1, Math.sqrt(TIER.px / fullPx()));
+  const QMIN = strong ? 1 : software ? 0.4 : 0.7;
+  const dpr = () => Q * Math.min(window.devicePixelRatio || 1, 2);
   const col = {}; for (const k in PAL.akash) col[k] = new THREE.Color(PAL[palName()][k]);
   const PALC = {}; for (const n in PAL) { PALC[n] = {}; for (const k in PAL[n]) PALC[n][k] = new THREE.Color(PAL[n][k]); }
   const easeCols = (r) => { const p = PALC[palName()]; for (const k in col) col[k].lerp(p[k], r); };
@@ -159,7 +162,7 @@ function boot() {
     return m;
   }
   const big = coarse ? 1536 : 2048;
-  const L = { outer: layer(draw.outer, big, 380, col.line, 0.0), spokes: layer(draw.spokes, 1536, 380, col.line, 0.05), inner: layer(draw.inner, 1024, 380, col.line, 0.1), hub: layer(draw.hub, 1024, 120, col.line, 0.15) };
+  const L = { outer: layer(draw.outer, big, 380, col.line, 0.0), spokes: layer(draw.spokes, big, 380, col.line, 0.05), inner: layer(draw.inner, big, 380, col.line, 0.1), hub: layer(draw.hub, 1024, 120, col.line, 0.15) };
   let reached = 0;
   L.truths = layer((x) => draw.truths(x, reached), big, 380, col.lit, 0.01);
   // the eighteen points: one per chapter read; lit ones go above 1 and bloom
