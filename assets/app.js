@@ -182,14 +182,14 @@
   function drawMap() {
     const host = $("#map"); if (!host) return;
     const r = Math.min(DVR.reached(), C.released), R = rng(12);
-    let s = `<svg viewBox="0 0 1000 620" role="img" aria-label="A drawn map of Dwarka with the places you have reached">`;
+    let s = `<div class="map-pan"><svg viewBox="0 0 1000 620" role="img" aria-label="A drawn map of Dwarka with the places you have reached">`;
     for (let row = 0; row < 6; row++) for (let col = 0; col < 9; col++) { const x = 70 + col * 100 + (row % 2 ? 18 : 0), y = 34 + row * 96; if (x > 900 || R() < 0.08) continue; s += `<rect class="blk" x="${x}" y="${y}" width="${78 + R() * 8}" height="${70 + R() * 6}" rx="4"/>`; }
     s += `<path class="rail" d="M 612,18 C 586,120 520,196 486,268 C 452,340 468,420 520,486 C 560,536 610,572 648,604"/>`;
     C.places.filter((p) => p.x != null).forEach((p, i) => {
       const open = p.ch <= r;
       s += `<g class="pin${open ? "" : " sealed"}" data-i="${i}" tabindex="0" role="button" aria-label="${open ? esc(p.name) : "A sealed place"}"><circle cx="${p.x}" cy="${p.y}" r="${open ? 5 : 4.5}"/>${open ? `<text x="${p.x + (p.side === "end" ? -12 : 12)}" y="${p.y + 4}" text-anchor="${p.side === "end" ? "end" : "start"}">${esc(p.name)}</text>` : ""}</g>`;
     });
-    host.innerHTML = s + `</svg><div class="map-note" id="mapNote">${r ? "Tap a place to remember what happened there." : "Nothing on the map yet. Read Chapter One and the first places appear."}</div>`;
+    host.innerHTML = s + `</svg></div><div class="map-note" id="mapNote">${r ? "Tap a place to remember what happened there." : "Nothing on the map yet. Read Chapter One and the first places appear."}</div>`;
     const pinned = C.places.filter((p) => p.x != null);
     host.querySelectorAll(".pin").forEach((g) => { const show = () => { const p = pinned[+g.dataset.i]; $("#mapNote").innerHTML = p.ch <= r ? `<b style="color:var(--bone)">${esc(p.name)}.</b> ${esc(p.text)}` : `Sealed until Chapter ${WORDS[p.ch]}.`; sound.tick(); };
       g.addEventListener("click", show); g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } }); });

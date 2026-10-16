@@ -182,10 +182,10 @@ function boot() {
   const points = new THREE.Points(pg, new THREE.ShaderMaterial({ uniforms: ptU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     vertexShader: `attribute float aI; uniform float uLit[18]; uniform float uPR, uScale, uHover; varying float vL; varying float vH;
       void main(){ float l = 0.0; for (int i = 0; i < 18; i++){ if (float(i) == aI) l = uLit[i]; } vL = l; vH = step(abs(aI - uHover), 0.5);
-        vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = (6.0 + 22.0 * l + 10.0 * vH) * uPR * uScale; }`,
+        vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = (6.0 + 26.0 * l + 10.0 * vH) * uPR * uScale; }`,
     fragmentShader: `uniform vec3 uColor, uDim; uniform float uA; varying float vL; varying float vH;
       void main(){ float d = length(gl_PointCoord - 0.5); float core = 1.0 - smoothstep(0.06, 0.16, d); float halo = exp(-d * 9.0) * (1.0 - smoothstep(0.3, 0.5, d));
-        vec3 c = mix(uDim * 0.6 * (1.0 - smoothstep(0.12, 0.2, d)) * step(0.08, d), uColor * (core * 2.6 + halo * 0.9), vL) + uColor * vH * halo * 0.8;
+        vec3 c = mix(uDim * 0.6 * (1.0 - smoothstep(0.12, 0.2, d)) * step(0.08, d), uColor * (core * 1.0 + halo * 0.55), vL) + uColor * vH * halo * 0.6;
         gl_FragColor = vec4(c * uA, 1.0); }` }));
   points.frustumCulled = false; wheel.add(points);
 
@@ -251,6 +251,7 @@ function boot() {
     about: { x: 0.85, y: 0.5, r: 0.36, w: [1, 0, 0, 0], neb: 0.5, tear: 0.0, parts: 0.14, rings: 0.4, pts: 1 },
     menu: { x: 0.84, y: 0.5, r: 0.42, w: [0.4, 0.6, 0, 0], neb: 0.6, tear: 0.0, parts: 0.25, rings: 0.55, pts: 1 },
   };
+  const UNDOCKED = new Set(["intro", "home", "reader", "tears", "powers", "menu"]);   // on phones every other page docks the wheel in the corner
   const S = { neb: 0, tear: 0, parts: 0, rings: 0, pts: 0, cx: window.innerWidth / 2, cy: window.innerHeight * 0.47, r: window.innerHeight * 0.3, draw: 0, boost: 0 };
   let page = "home", state = "home", anchor = null, follow = 1, T = 0, outerAngle = 0, innerAngle = 0, menuOpen = false, boostI = -1;
   const anchorRect = () => { if (!anchor || !anchor.isConnected) return null; const r = anchor.getBoundingClientRect(); return r.width > 0 ? r : null; };
@@ -305,10 +306,14 @@ function boot() {
   window.addEventListener("dvr:hoverch", (e) => { hoverCh = e.detail ? e.detail - 1 : -1; });
 
   // ---------- sizing ----------
-  let nebDirty = true;
+  // the canvas is drawn for its own CSS size. On phones that is 100lvh, taller than innerHeight while the browser's bars show;
+  // drawing for innerHeight and stretching it squashed the wheel. The bars showing and hiding fire resize without changing it
+  let nebDirty = true, canW = window.innerWidth, canH = window.innerHeight, sized = "";
   function resize() {
-    const w = window.innerWidth, h = Math.min(window.innerHeight, (window.screen && window.screen.height ? window.screen.height * 1.5 : 1e5));
-    const d = dpr(); renderer.setPixelRatio(d); renderer.setSize(w, h, false); composer.setPixelRatio(d); composer.setSize(w, h);
+    const w = canvas.clientWidth || window.innerWidth, h = Math.min(canvas.clientHeight || window.innerHeight, (window.screen && window.screen.height ? window.screen.height * 1.5 : 1e5));
+    const d = dpr(), key = w + "x" + h + "@" + d + "/" + LV; canW = w; canH = h;
+    if (key === sized) return; sized = key;
+    renderer.setPixelRatio(d); renderer.setSize(w, h, false); composer.setPixelRatio(d); composer.setSize(w, h);
     camera.aspect = w / h; camera.updateProjectionMatrix();
     rt.setSize(Math.max(2, Math.round(w * d / (coarse ? 3 : 2))), Math.max(2, Math.round(h * d / (coarse ? 3 : 2)))); nebU.uRes.value.set(rt.width, rt.height);
     partU.uPR.value = ptU.uPR.value = d; nebDirty = true; PERF.w = renderer.domElement.width; PERF.h = renderer.domElement.height;
@@ -327,18 +332,20 @@ function boot() {
     if (!still) T += dt;
     easeCols(still ? 1 : Math.min(1, dt * 3)); renderer.setClearColor(col.ink, 1); eclipse.material.color.copy(col.ink);
     for (let i = 0; i < 18; i++) litArr[i] += (litTarget[i] - litArr[i]) * Math.min(1, dt * 2.2);
-    const w = window.innerWidth, h = window.innerHeight, s = SCENES[state] || SCENES.about, ar = s.anchor ? anchorRect() : null;
+    // w, h: the visible window, where the wheel is placed; canH: the canvas, which the scene is drawn for
+    const w = canW, h = window.innerHeight || canH, s = SCENES[state] || SCENES.about, ar = s.anchor ? anchorRect() : null;
     let tx, ty, tr;
     if (ar) { tx = ar.left + ar.width / 2; ty = ar.top + ar.height / 2; tr = ar.width / 2; }
     else if (s.px) { [tx, ty, tr] = s.px(w, h); }
+    else if (w < 700 && !UNDOCKED.has(state)) { tr = Math.min(w * 0.17, 76); tx = w - tr - 14; ty = h - tr - 22; }   // phones: small, in the corner, out of the way
     else { tx = s.x * w; ty = s.y * h; tr = s.r * h; if (w < 900 && (state === "contents" || state === "home:index" || state === "story" || state === "about")) { tx = w * 1.02; tr = Math.min(tr, w * 0.55); }
       if (w < 900 && state === "codex") { tx = w * 0.96; ty = h * 0.13; tr = Math.min(tr, w * 0.4); }
       if (w < 900 && state === "tears") tx = w * 0.93; }
     const k = follow >= 1 ? 1 : Math.min(1, dt * (2 + 6 * follow));
     S.cx += (tx - S.cx) * k; S.cy += (ty - S.cy) * k; S.r += (tr - S.r) * k;
-    const u = viewH(0) / h;
+    const u = viewH(0) / canH;
     tilt.x += (tiltT.x - tilt.x) * Math.min(1, dt * 2); tilt.y += (tiltT.y - tilt.y) * Math.min(1, dt * 2);
-    wheel.position.set((S.cx - w / 2) * u, -(S.cy - h / 2) * u, 0); wheel.scale.setScalar(Math.max(0.0001, S.r * u));
+    wheel.position.set((S.cx - w / 2) * u, -(S.cy - canH / 2) * u, 0); wheel.scale.setScalar(Math.max(0.0001, S.r * u));
     wheel.rotation.x = still || page === "reader" ? 0 : -tilt.y * 0.16; wheel.rotation.y = still || page === "reader" ? 0 : tilt.x * 0.2;
     tear.position.set(wheel.position.x, wheel.position.y, -0.6); tear.scale.set(Math.max(1.2, wheel.scale.x * 1.2), viewH(-0.6) * 1.05, 1);
     if (!still) { outerAngle += SPIN * dt; innerAngle += SPIN_IN * dt; }
@@ -350,7 +357,7 @@ function boot() {
     ptU.uA.value = S.pts * Math.min(1, Math.max(0, drawP * 1.4 - 0.4)); ptU.uScale.value = Math.max(0.42, S.r / 260); ptU.uHover.value = hoverCh >= 0 ? hoverCh : (S.boost > 0.02 ? boostI : -1);
     partU.uTime.value = T; partU.uAlpha.value = S.parts; partU.uSize.value = 24 * Math.max(0.6, Math.min(1.6, S.r / 300));
     tearU.uOpen.value = S.tear; tearU.uTime.value = T;
-    nebU.uTime.value = T; nebU.uIntensity.value = S.neb; nebU.uGlow.value.set(S.cx / w, 1 - S.cy / h, ringsA);
+    nebU.uTime.value = T; nebU.uIntensity.value = S.neb; nebU.uGlow.value.set(S.cx / w, 1 - S.cy / canH, ringsA);
     finU.uTime.value = still ? 0 : Math.floor(T * 24) / 24;
     if (nebDirty || calm || still || frameNo % LVS[LV].neb === 0) { renderer.setRenderTarget(rt); renderer.render(bgScene, bgCam); renderer.setRenderTarget(null); nebDirty = false; }   // the smoke changes slowly
     composer.render();

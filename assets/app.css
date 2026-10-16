@@ -229,10 +229,12 @@ html[data-rakta="on"] .th-dot { display: none; } html[data-rakta="on"] .th-drop 
 .facts li { display: grid; grid-template-columns: 52px 1fr; gap: 12px; font-size: 16.5px; color: var(--bone-2); line-height: 1.5; }
 .facts li span { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.14em; color: var(--accent); padding-top: 4px; }
 .sealed-note { margin: 8px 0 0; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--seal); }
-.map { position: relative; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.015); }
+.map { position: relative; z-index: 1; border: 1px solid var(--line-2); background: color-mix(in srgb, var(--ink-2) 94%, transparent); }   /* its own ground: the wheel behind must not show through */
+.map-pan { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .map svg { display: block; width: 100%; height: auto; }
 .map .blk { fill: none; stroke: var(--line); } .map .rail { fill: none; stroke: var(--line-2); stroke-dasharray: 1 7; stroke-linecap: round; }
 .map .pin circle { fill: var(--accent); } .map .pin text { fill: var(--bone-2); font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+@media (max-width: 700px) { .map svg { min-width: 760px; } .map .pin text { font-size: 14px; letter-spacing: 0.04em; } .map .pin circle { stroke: var(--ink-2); stroke-width: 6px; paint-order: stroke; } }   /* phones: pan the map sideways, labels big enough to read */
 .map .pin.sealed circle { fill: none; stroke: var(--seal); stroke-dasharray: 2 2; } .map .pin.sealed text { display: none; }
 .map-note { padding: 16px 20px; border-top: 1px solid var(--line); font-size: 16px; color: var(--bone-2); min-height: 3.2em; }
 .cx { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px clamp(30px, 5vw, 80px); padding: 0 var(--gutter) 140px; }
