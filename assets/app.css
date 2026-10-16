@@ -65,9 +65,9 @@ html.menu-open .bar { transform: none; opacity: 1; }
 #app { transition: opacity 0.7s var(--ease); } html.menu-open #app { opacity: 0; }
 .menu ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15em; }
 .menu li { overflow: hidden; }
-.menu a { display: inline-flex; align-items: baseline; gap: 0.5em; font-family: var(--f-display); font-weight: 300; font-size: clamp(40px, 7.4vw, 112px); line-height: 1.02; letter-spacing: -0.02em; transform: translateY(105%); transition: transform 0.9s var(--ease), color var(--t-hover) var(--ease); }
+.menu a { display: inline-flex; align-items: baseline; gap: 0.5em; font-family: var(--f-display); font-weight: 300; font-size: clamp(34px, min(7.4vw, 8.4vh), 112px); line-height: 1.02; letter-spacing: -0.02em; transform: translateY(105%); transition: transform 0.9s var(--ease), color var(--t-hover) var(--ease); }
 .menu-open .menu a { transform: none; }
-.menu li:nth-child(2) a { transition-delay: 0.05s; } .menu li:nth-child(3) a { transition-delay: 0.1s; } .menu li:nth-child(4) a { transition-delay: 0.15s; } .menu li:nth-child(5) a { transition-delay: 0.2s; } .menu li:nth-child(6) a { transition-delay: 0.25s; } .menu li:nth-child(7) a { transition-delay: 0.3s; }
+.menu li:nth-child(2) a { transition-delay: 0.05s; } .menu li:nth-child(3) a { transition-delay: 0.1s; } .menu li:nth-child(4) a { transition-delay: 0.15s; } .menu li:nth-child(5) a { transition-delay: 0.2s; } .menu li:nth-child(6) a { transition-delay: 0.25s; } .menu li:nth-child(7) a { transition-delay: 0.3s; } .menu li:nth-child(8) a { transition-delay: 0.35s; }
 .menu a small { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--muted); }
 .menu a .dv { font-family: var(--f-deva); font-size: 0.32em; color: var(--muted); }
 .menu ol:hover a { color: var(--muted); } .menu ol a:hover, .menu a.is-on { color: var(--bone); }

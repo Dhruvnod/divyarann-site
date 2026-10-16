@@ -38,7 +38,7 @@
   const nextLine = () => (C.next ? (C.next.date ? `Chapter ${WORDS[C.next.n]} arrives ${C.next.date}.` : `Chapter ${WORDS[C.next.n]} is on its way.`) : "");
   const foot = () => `<footer class="foot"><div class="foot-in"><p>© ${new Date().getFullYear()} ${esc(C.author)}. All rights reserved.</p>
       <p>Divyarann is a work of fiction. This is the draft web edition of Book One: chapters may be revised, and this edition may be withdrawn when the book is published. Please share the link rather than reposting chapters elsewhere.</p>
-      <p class="foot-links"><a href="/about/">About and privacy</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
+      <p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
   const follow = () => {
     const nl = C.newsletter, insta = C.instagram, handle = insta ? insta.replace(/\/+$/, "").split("/").pop() : "";
     return `<section class="section follow"><p class="kicker"><span>New chapters</span></p><h2>Be told when the next tear opens</h2>
@@ -156,11 +156,17 @@
         <div class="book later"><p class="kicker"><span>Books Two and Three</span></p><h3>Sealed</h3><p>They open when Book One ends.</p></div></section>
       <ol class="sums">${C.chapters.map((c) => `<li class="${c.n <= r ? "" : "is-veiled"}"><p class="kicker"><span>Chapter ${WORDS[c.n]}</span><span>${esc(c.pov)}</span></p><h3>${esc(c.title)} <span lang="sa">${esc(c.deva)}</span></h3><p>${c.n <= r ? esc(c.summary) : "Read Chapter " + WORDS[c.n] + " to unveil this."}</p></li>`).join("")}</ol>${foot()}`;
   }
+  // the disclaimer and the author's page: their paragraphs come from tools/site_v2/disclaimer.md and author.md (already escaped by the build)
+  const paras = (ps) => (ps || []).map((p) => (p.h ? `<h2>${p.t}</h2>` : `<p>${p.t.replace("{year}", new Date().getFullYear())}</p>`)).join("");
+  const disclaimer = () => `<section class="page-head"><p class="kicker"><span>Disclaimer</span></p><h1 class="page-title">A work of fiction</h1></section>
+      <section class="about">${paras(C.disclaimer)}</section>${foot()}`;
+  const author = () => `<section class="page-head"><p class="kicker"><span>About the author</span></p><h1 class="page-title">${esc(C.author)}</h1></section>
+      <section class="about">${paras(C.authorBio) || "<p>A few words from the author are on their way.</p>"}<p>Write to hello@divyarann.com.</p></section>${foot()}`;
   const sealedPage = (kick, title, line) => `<section class="page-head sealed-page"><p class="kicker"><span>${kick}</span></p><h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}</p></section>${foot()}`;
   function about() {
     return `<section class="page-head"><p class="kicker"><span>About</span></p><h1 class="page-title">Divyarann</h1></section>
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
-      <h2>The author</h2><p>Written by ${esc(C.author)}. Write to hello@divyarann.com.</p>
+      <h2>The author</h2><p>Written by <a href="/author/">${esc(C.author)}</a>. Write to hello@divyarann.com.</p>
       <h2>Privacy</h2><p>Your reading progress stays on your device. The site sets no advertising or tracking cookies.</p></section>${foot()}`;
   }
 
@@ -262,25 +268,27 @@
     [/^tears$/, () => ["tears", sealedPage("Atlas", "The Seven Tears", "The sky has not opened yet. This atlas fills in as the story reaches the tears.")]],
     [/^powers$/, () => ["powers", sealedPage("Reference", "Powers", "One energy, latent in everyone, answering what a person is actually resolved to do. Nobody has awakened yet.")]],
     [/^about$/, () => ["about", about()]],
+    [/^author$/, () => ["author", author()]],
+    [/^disclaimer$/, () => ["disclaimer", disclaimer()]],
     [/^subscribed$/, () => ["subscribed", mailPage("Almost there", "Check your email", "A confirmation link is on its way to your inbox. Open it and each new chapter will reach you by email. If it has not arrived in a few minutes, look in Promotions or Spam.", `<a class="cta" href="/read/">Back to the chapters</a>`)]],
     [/^confirmed$/, () => ["confirmed", mailPage("You are on the list", "Welcome to Divyarann", "Each new chapter will arrive in your inbox on the day it is released.", `<a class="cta" href="/read/1/">Start at Chapter One</a><a class="cta ghost" href="/read/">All chapters</a>`)]],
     [/^notfound$/, () => ["notfound", notFound()]],
   ];
   function mailPage(kick, title, line, ctas) { return `<section class="page-head sealed-page"><p class="kicker"><span>${kick}</span></p><h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><div class="cta-row">${ctas}</div></section>${foot()}`; }
   function notFound() { return `<section class="page-head sealed-page"><p class="kicker"><span>Not found</span></p><h1 class="page-title">This page is not in the book</h1><p class="page-lede">The link may be old, or the page may not have opened yet.</p><div class="cta-row"><a class="cta" href="/">Back to the threshold</a><a class="cta ghost" href="/read/">All chapters</a></div></section>${foot()}`; }
-  const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann" };
+  const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann", author: "About the author · Divyarann", disclaimer: "Disclaimer · Divyarann" };
   let current = null, navId = 0, ctx = null;
   function routeKey() {
     const p = location.pathname.replace(/\/index\.html$/, "/").replace(/([^/])$/, "$1/"), h = (location.hash || "").replace(/^#\/?/, "");
-    if (p === "/" && /^(story|tears|powers|codex|about|chapters|ch-\d+)$/.test(h)) return h;
+    if (p === "/" && /^(story|tears|powers|codex|about|author|disclaimer|chapters|ch-\d+)$/.test(h)) return h;
     let m;
     if (p === "/") return "home";
     if (p === "/read/") return "chapters";
     if ((m = p.match(/^\/read\/(\d+)\/$/))) return "ch-" + m[1];
-    if ((m = p.match(/^\/(codex|story|tears|powers|about|subscribed|confirmed)\/$/))) return m[1];
+    if ((m = p.match(/^\/(codex|story|tears|powers|about|author|disclaimer|subscribed|confirmed)\/$/))) return m[1];
     return "notfound";
   }
-  const PATHS = { home: "/", chapters: "/read/", codex: "/codex/", story: "/story/", tears: "/tears/", powers: "/powers/", about: "/about/" };
+  const PATHS = { home: "/", chapters: "/read/", codex: "/codex/", story: "/story/", tears: "/tears/", powers: "/powers/", about: "/about/", author: "/author/", disclaimer: "/disclaimer/" };
   function resolve() { const h = routeKey(); for (const [re, fn] of ROUTES) { const m = h.match(re); if (m) return fn(m); } return ["notfound", notFound()]; }
   async function go(first) {
     const id = ++navId;
