@@ -481,16 +481,29 @@
 
   // ---------- reading ----------
   const tearline = $("#tearline");
-  const tlPts = jagged([8, 0], [8, 1000], 6, 0.08, rng(5));
+  // the reading line: a hairline crack that wanders a few units either side of the middle of its 16-unit column (a jagged
+  // line's first bend could swing far outside the column, which cut the line off in the middle)
+  const tlPts = (() => { const R = rng(5), out = [[8, 0]]; let y = 0, side = 1; while (y < 1000) { y = Math.min(1000, y + 12 + R() * 22); out.push([8 + side * (0.8 + R() * 3.2) * (R() < 0.12 ? 1.5 : 1), y]); side = -side; } return out; })();
   const tlD = "M" + tlPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L");
   tearline.querySelectorAll("path").forEach((p) => p.setAttribute("d", tlD));
-  const tlLit = tearline.querySelector(".lit"); let tlLen = 1000;
-  try { tlLen = tlLit.getTotalLength(); } catch (e) {}
-  tlLit.style.strokeDasharray = tlLen; tlLit.style.strokeDashoffset = tlLen;
+  // lit by a clip in the line's own units, so it always stops exactly at the reading position; a point of light rides on it
+  const tlLit = tearline.querySelector(".lit"), SVGNS = "http://www.w3.org/2000/svg";
+  const tlDefs = document.createElementNS(SVGNS, "defs"), tlClip = document.createElementNS(SVGNS, "clipPath"), tlRect = document.createElementNS(SVGNS, "rect");
+  tlClip.id = "tlClip"; tlClip.setAttribute("clipPathUnits", "userSpaceOnUse"); [["x", -24], ["y", -2], ["width", 64], ["height", 0]].forEach(([k, v]) => tlRect.setAttribute(k, v));
+  tlClip.appendChild(tlRect); tlDefs.appendChild(tlClip); tearline.insertBefore(tlDefs, tearline.firstChild); tlLit.setAttribute("clip-path", "url(#tlClip)");
+  const tlTip = document.createElement("span"); tlTip.className = "tearline-tip"; tlTip.setAttribute("aria-hidden", "true"); document.body.appendChild(tlTip);
+  const tlX = (y) => { for (let i = 1; i < tlPts.length; i++) if (tlPts[i][1] >= y) { const v = (y - tlPts[i - 1][1]) / Math.max(0.01, tlPts[i][1] - tlPts[i - 1][1]); return tlPts[i - 1][0] + (tlPts[i][0] - tlPts[i - 1][0]) * v; } return 8; };
+  function tlSet(p) {
+    tlRect.setAttribute("height", (p * 1000 + 2).toFixed(1));
+    const b = tearline.getBoundingClientRect(), x = b.left + b.width / 2 + (tlX(p * 1000) - 8) * (b.width / 16);
+    tlTip.style.transform = `translate(${x.toFixed(1)}px, ${(b.top + p * b.height).toFixed(1)}px)`;
+    tlTip.classList.toggle("show", p > 0.002 && p < 0.998);
+  }
+  window.addEventListener("resize", () => { if (typeof readerScroll === "function") readerScroll(); });
   let readerScroll = null;
   function mountReader(n) {
     const prose = $("#prose"), end = $("#chEnd");
-    const onScroll = () => { if (!prose || !prose.isConnected) return; const r = prose.getBoundingClientRect(), h = window.innerHeight; const p = Math.min(1, Math.max(0, (h * 0.6 - r.top) / r.height)); tlLit.style.strokeDashoffset = tlLen * (1 - p); };
+    const onScroll = () => { if (!prose || !prose.isConnected) return; const r = prose.getBoundingClientRect(), h = window.innerHeight; const p = Math.min(1, Math.max(0, (h * 0.6 - r.top) / r.height)); tlSet(p); };
     if (readerScroll) window.removeEventListener("scroll", readerScroll); readerScroll = onScroll; window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.disconnect(); if (DVR.markRead(n)) ritual(n); } }), { rootMargin: "0px 0px -30% 0px" });
     io.observe(end);
