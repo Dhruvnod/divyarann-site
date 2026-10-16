@@ -84,11 +84,19 @@ function boot() {
   const software = /swiftshader|llvmpipe|basic render|software/i.test(gpuName), strong = /nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro/i.test(gpuName);
   const tier = software || !renderer.capabilities.isWebGL2 ? 0 : coarse ? ((navigator.hardwareConcurrency || 4) >= 8 ? 2 : 1) : 3;
   const TIER = [{ px: 0.6e6, n: 6000, oct: 3, bloom: 0.25 }, { px: 0.8e6, n: 14000, oct: 3, bloom: 0.3 }, { px: 1.2e6, n: 22000, oct: 4, bloom: 0.35 }, { px: strong ? 3.4e6 : 1.8e6, n: 30000, oct: 4, bloom: 0.4 }][tier];
-  // resolution: Q scales the screen's own pixel ratio (up to 2). A discrete GPU starts and stays at full sharpness; anything
-  // else starts from its tier's pixel budget and climbs towards full sharpness while frames stay on time, stepping down if they run late
+  // resolution: Q scales the screen's own pixel ratio (up to 2). A discrete GPU starts at full sharpness; anything else starts
+  // from its tier's pixel budget and climbs towards full sharpness while frames stay on time
   const fullPx = () => window.innerWidth * window.innerHeight * Math.pow(Math.min(window.devicePixelRatio || 1, 2), 2);
-  let Q = strong ? 1 : Math.min(1, Math.sqrt(TIER.px / fullPx()));
-  const QMIN = strong ? 1 : software ? 0.4 : 0.7;
+  // and four levels of effects (glow resolution, how much dust, smoke detail, how often the smoke is redrawn), each with a
+  // resolution ceiling. Late frames lower the level, so the effects lighten before the image softens; frames on time first
+  // raise the resolution to the level's ceiling, then the level. A discrete GPU starts at the top and keeps full resolution
+  // above the lowest level
+  const LVS = [[0.16, 0.35, 2, 3], [0.22, 0.55, 3, 2], [0.3, 0.75, 3, 1], [TIER.bloom, 1, TIER.oct, 1]].map(([bloom, parts, oct, neb], i) =>
+    ({ bloom: Math.min(bloom, TIER.bloom), parts, oct: Math.min(oct, TIER.oct), neb, q: strong ? (i ? 1 : 0.86) : [0.72, 0.86, 1, 1][i] }));
+  let LV = software ? 0 : strong ? 3 : 2;
+  let Q = strong ? 1 : Math.min(LVS[LV].q, Math.sqrt(TIER.px / fullPx()));
+  const QMIN = strong ? 0.86 : software ? 0.4 : 0.6;
+  const PERF = window.DVPerf = { fps: 60, q: Q, lv: LV, gpu: gpuName, software, strong, late: 0, calm: false, w: 0, h: 0 };
   const dpr = () => Q * Math.min(window.devicePixelRatio || 1, 2);
   const col = {}; for (const k in PAL.akash) col[k] = new THREE.Color(PAL[palName()][k]);
   const PALC = {}; for (const n in PAL) { PALC[n] = {}; for (const k in PAL[n]) PALC[n][k] = new THREE.Color(PAL[n][k]); }
@@ -207,7 +215,7 @@ function boot() {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(4, 4), 0.8, 0.55, 1.0);
-  const setB = bloom.setSize.bind(bloom); bloom.setSize = (a, b) => setB(a * TIER.bloom, b * TIER.bloom);
+  const setB = bloom.setSize.bind(bloom); bloom.setSize = (a, b) => setB(a * LVS[LV].bloom, b * LVS[LV].bloom);
   composer.addPass(bloom);
   const finU = { tDiffuse: { value: null }, uTime: { value: 0 }, uGrain: { value: 0.045 }, uVignette: { value: 0.5 }, uCA: { value: 0.007 } };
   composer.addPass(new ShaderPass({ uniforms: finU, vertexShader: QUAD_VERT,
@@ -297,17 +305,18 @@ function boot() {
   window.addEventListener("dvr:hoverch", (e) => { hoverCh = e.detail ? e.detail - 1 : -1; });
 
   // ---------- sizing ----------
+  let nebDirty = true;
   function resize() {
     const w = window.innerWidth, h = Math.min(window.innerHeight, (window.screen && window.screen.height ? window.screen.height * 1.5 : 1e5));
     const d = dpr(); renderer.setPixelRatio(d); renderer.setSize(w, h, false); composer.setPixelRatio(d); composer.setSize(w, h);
     camera.aspect = w / h; camera.updateProjectionMatrix();
     rt.setSize(Math.max(2, Math.round(w * d / (coarse ? 3 : 2))), Math.max(2, Math.round(h * d / (coarse ? 3 : 2)))); nebU.uRes.value.set(rt.width, rt.height);
-    partU.uPR.value = ptU.uPR.value = d;
+    partU.uPR.value = ptU.uPR.value = d; nebDirty = true; PERF.w = renderer.domElement.width; PERF.h = renderer.domElement.height;
   }
   resize(); window.addEventListener("resize", resize);
 
   // ---------- the loop ----------
-  let lastInput = performance.now(), frameNo = 0, tilt = { x: 0, y: 0 }, tiltT = { x: 0, y: 0 };
+  let lastInput = performance.now(), frameNo = 0, calm = false, tilt = { x: 0, y: 0 }, tiltT = { x: 0, y: 0 };
   ["scroll", "pointermove", "keydown", "touchstart", "wheel"].forEach((t) => window.addEventListener(t, (e) => { lastInput = performance.now(); if (t === "pointermove") { tiltT.x = e.clientX / window.innerWidth - 0.5; tiltT.y = e.clientY / window.innerHeight - 0.5; } }, { passive: true }));
   const SPIN = Math.PI * 2 / 236, SPIN_IN = Math.PI * 2 / 364;
   function frame(dt) {
@@ -343,7 +352,7 @@ function boot() {
     tearU.uOpen.value = S.tear; tearU.uTime.value = T;
     nebU.uTime.value = T; nebU.uIntensity.value = S.neb; nebU.uGlow.value.set(S.cx / w, 1 - S.cy / h, ringsA);
     finU.uTime.value = still ? 0 : Math.floor(T * 24) / 24;
-    renderer.setRenderTarget(rt); renderer.render(bgScene, bgCam); renderer.setRenderTarget(null);
+    if (nebDirty || calm || still || frameNo % LVS[LV].neb === 0) { renderer.setRenderTarget(rt); renderer.render(bgScene, bgCam); renderer.setRenderTarget(null); nebDirty = false; }   // the smoke changes slowly
     composer.render();
   }
 
@@ -367,13 +376,23 @@ function boot() {
     menu(open) { menuOpen = open; goState(pageState()); },
     eclipse() { if (!gs || reduced()) return; eclipse.position.x = -1.6; eclipse.material.opacity = 1; gs.to(eclipse.position, { x: 1.6, duration: 1.4, ease: "power2.inOut", overwrite: "auto", onComplete: () => { eclipse.material.opacity = 0; } }); },
     light(n) { boostI = n - 1; S.boost = 1; syncProgress(true); lastInput = performance.now(); },
+    _dbg(n) { for (let i = 0; i < (n || 0); i++) frame(0.05); },   // profiling: run n frames by hand
+    _objs() { return { bloom, composer, renderer, parts, rt, scene, bgScene, nebU, partU }; },
   };
   syncProgress(false);
   window.DVGL = API;
-  const PERF = window.DVPerf = { fps: 60, q: Q, gpu: gpuName, software, strong, late: 0 };
-  let period = 1000 / 60, recent = [], late = 0, count = 0, secT = 0, bad = 0, good = 0, warmT = 0;
+  let period = 1000 / 60, recent = [], late = 0, count = 0, secT = 0, bad = 0, good = 0, warmT = 0, rest = 0;
+  const lost = [0, 0, 0, 0];   // how often each level was lost; climbing back to it waits longer each time
+  const applyLevel = () => { const L0 = LVS[LV]; nebU.uOct.value = L0.oct; geo.setDrawRange(0, Math.floor(N * L0.parts)); PERF.lv = LV; };
+  function setLevel(n) { if (n < LV) lost[LV]++; LV = n; Q = Math.min(Q, LVS[LV].q); applyLevel(); resize(); PERF.q = Q; bad = good = 0; warmT = 3000; }
+  applyLevel();
   function pace(time, dms) {
     const ms = Math.min(dms, 100);
+    // nothing moving (no scroll, pointer, key or transition for a few seconds): about 30 frames a second is plenty for a slow wheel
+    calm = performance.now() - lastInput > 2500 && follow >= 1 && S.boost < 0.01 && !root.classList.contains("is-intro") && !(gs && (gs.isTweening(S) || gs.isTweening(partU.uW.value) || gs.isTweening(eclipse.position)));
+    PERF.calm = calm;
+    if (calm) { rest += ms; if (rest < 28) return; const step = rest; rest = 0; frame(Math.min(step, 50) / 1000); return; }
+    rest = 0;
     if (!document.hidden && !reduced()) {
       warmT += ms; count++; secT += ms; recent.push(ms); if (recent.length > 180) recent.shift();
       if (ms > period * 1.6) late++;
@@ -382,8 +401,10 @@ function boot() {
         PERF.fps = Math.round(count * 1000 / secT); PERF.hz = Math.round(1000 / period);
         const lateShare = late / Math.max(1, count); PERF.late = Math.round(lateShare * 100);
         if (warmT > 5000) {
-          if (lateShare > 0.3) { good = 0; if (++bad >= 4 && Q > QMIN) { Q = Math.max(QMIN, Q * 0.92); resize(); bad = 0; } }
-          else if (lateShare < 0.06) { bad = 0; if (++good >= 4 && Q < 1) { Q = Math.min(1, Q * 1.08); resize(); good = 0; } }
+          if (lateShare > 0.25) { good = 0; if (++bad >= 3) { if (LV > 0) setLevel(LV - 1); else if (Q > QMIN) { Q = Math.max(QMIN, Q * 0.9); resize(); bad = 0; } } }
+          else if (lateShare < 0.05) { bad = 0; good++;
+            if (Q < LVS[LV].q - 0.001) { if (good >= 4) { Q = Math.min(LVS[LV].q, Q * 1.1); resize(); good = 0; } }
+            else if (LV < 3 && good >= 6 * Math.pow(2, Math.min(4, lost[LV + 1]))) setLevel(LV + 1); }
           else { bad = 0; good = 0; }
         }
         late = 0; count = 0; secT = 0; PERF.q = Q;

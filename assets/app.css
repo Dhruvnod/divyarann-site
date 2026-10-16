@@ -101,16 +101,18 @@ html.menu-open .bar { transform: none; opacity: 1; }
 .torn { position: relative; }
 .torn > section { position: relative; z-index: 1; }
 .thread { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
-.thread-pulse { z-index: 0; }   /* under the text, over the thread; it passes behind each chapter node, which lights as it goes */
+.thread-pulse { z-index: 0; will-change: transform, opacity; }   /* under the text, over the thread; it passes behind each chapter node, which lights as it goes */
+.th-hub { position: absolute; left: 0; top: 0; z-index: 0; width: 68px; height: 68px; pointer-events: none; opacity: 0; will-change: opacity;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 95%, transparent), color-mix(in srgb, var(--accent) 45%, transparent) 30%, transparent); }
+.perf-hud { position: fixed; right: 10px; bottom: 10px; z-index: 60; margin: 0; padding: 8px 10px; background: rgba(0, 0, 0, 0.75); color: #d6f5d6; font: 11px/1.5 ui-monospace, Consolas, monospace; border-radius: 6px; pointer-events: none; white-space: pre; }
 .th-base { fill: none; stroke: var(--line-2); stroke-width: 1; stroke-linejoin: round; }
-.th-glow { fill: none; stroke: var(--accent); stroke-width: 10; opacity: 0.08; stroke-linejoin: round; animation: thBreathe 7s ease-in-out infinite; }
+.th-glow { fill: none; stroke: var(--accent); stroke-width: 10; opacity: 0.1; stroke-linejoin: round; }   /* static: a breathing glow repainted the whole page every frame */
 .th-glow2 { fill: none; stroke: var(--accent); stroke-width: 3.2; opacity: 0.32; stroke-linejoin: round; }
 .th-core { fill: none; stroke: var(--bone); stroke-width: 1.1; opacity: 0.92; stroke-linejoin: round; }
 .th-branch { fill: none; stroke: var(--accent); stroke-width: 1; opacity: 0.55; stroke-linecap: round; }
 .th-tail { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .th-dot { fill: #fff; } .th-drop { display: none; fill: #c4121f; }
 html[data-rakta="on"] .th-dot { display: none; } html[data-rakta="on"] .th-drop { display: inline; }
-@keyframes thBreathe { 0%, 100% { opacity: 0.06; } 50% { opacity: 0.13; } }
 .index .sec-head { text-align: center; } .index .sec-head .kicker { justify-content: center; }
 .ix { list-style: none; margin: 0 auto; padding: 0; max-width: 1180px; }
 .ix-row { position: relative; }
@@ -146,7 +148,7 @@ html[data-rakta="on"] .th-dot { display: none; } html[data-rakta="on"] .th-drop 
   .ix-l { grid-column: 2; grid-row: 1; justify-items: start; text-align: left; } .ix-r { grid-column: 2; grid-row: 2; }
   .ix-link:hover .ix-l .ix-t { transform: none; }
 }
-@media (prefers-reduced-motion: reduce) { .th-glow, .is-next .ix-node::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .is-next .ix-node::after { animation: none; } }
 .four-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); }
 .four-card { position: relative; display: grid; align-content: space-between; gap: 40px; min-height: 360px; padding: 28px 24px 30px; border-right: 1px solid var(--line); transition: background var(--t-hover) var(--ease); }
 .four-card:first-child { border-left: 1px solid var(--line); }

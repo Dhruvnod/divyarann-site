@@ -323,7 +323,8 @@
   const thread = (() => {
     const NS = "http://www.w3.org/2000/svg";
     const E = (n, a, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
-    let on = false, pts = [], cum = [], litLen = 0, nodes = [], target = null, spark = null, tail = null, tailG = null, hubDot = null, clipRect = null;
+    let on = false, pts = [], cum = [], litLen = 0, nodes = [], target = null, spark = null, tail = null, tailG = null, hubDot = null, clipRect = null, box = null;
+    const BX = 150, BY = 190;   // where the spark sits inside its moving layer
     let phase = "wait", u = 0, wait = 1.2, dur = 3, drawn = true, flash = 0, torn = null, drewFor = null;
     const easeIO = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
     function crack(pins, R) {   // a hairline that wanders a few pixels either side of the straight line between pins, with small side cracks
@@ -385,15 +386,16 @@
       E("path", { d, class: "th-glow" }, lit); E("path", { d, class: "th-glow2" }, lit);
       if (c.br.length) E("path", { d: c.br.map((b) => `M${b[0].toFixed(1)},${b[1].toFixed(1)} l${b[2].toFixed(1)},${b[3].toFixed(1)}`).join(" "), class: "th-branch" }, lit);
       E("path", { d, class: "th-core" }, lit);
-      // the pulse, in its own layer so the thread is never redrawn
-      sv2.setAttribute("width", W); sv2.setAttribute("height", H); sv2.setAttribute("viewBox", `0 0 ${W} ${H}`); sv2.replaceChildren();
+      // the pulse: a small layer moved by transform, so nothing else on the page is redrawn while it runs (only its short tail is)
+      box = sv2; sv2.setAttribute("width", 300); sv2.setAttribute("height", 300); sv2.setAttribute("viewBox", "0 0 300 300"); sv2.replaceChildren(); sv2.style.opacity = 0;
       const d2 = E("defs", {}, sv2), rg = E("radialGradient", { id: "thGlow" }, d2);
       [[0, 0.95], [0.3, 0.45], [1, 0]].forEach(([o, a]) => E("stop", { offset: o, style: `stop-color: var(--accent); stop-opacity: ${a}` }, rg));
       tailG = E("linearGradient", { id: "thTail", gradientUnits: "userSpaceOnUse", x1: 0, y1: 0, x2: 0, y2: 1 }, d2);
       E("stop", { offset: 0, style: "stop-color: var(--accent); stop-opacity: 0" }, tailG); E("stop", { offset: 1, style: "stop-color: var(--bone); stop-opacity: 0.95" }, tailG);
-      hubDot = E("circle", { cx: pts[0][0], cy: pts[0][1], r: 34, fill: "url(#thGlow)", opacity: 0 }, sv2);
+      hubDot = torn.querySelector(".th-hub") || torn.insertBefore(Object.assign(document.createElement("span"), { className: "th-hub" }), sv2);
+      hubDot.style.left = (pts[0][0] - 34).toFixed(1) + "px"; hubDot.style.top = (pts[0][1] - 34).toFixed(1) + "px"; hubDot.style.opacity = 0; flash = 0;
       tail = E("polyline", { class: "th-tail", stroke: "url(#thTail)", points: "" }, sv2);
-      spark = E("g", { class: "th-spark", opacity: 0 }, sv2);
+      spark = E("g", { class: "th-spark", transform: `translate(${BX},${BY})` }, sv2);
       E("circle", { r: 22, fill: "url(#thGlow)" }, spark); E("circle", { r: 2.6, class: "th-dot" }, spark); E("path", { d: "M0,-6.5 C2.2,-2.5 3.6,0 3.6,2.2 A3.6,3.6 0 0 1 -3.6,2.2 C-3.6,0 -2.2,-2.5 0,-6.5 Z", class: "th-drop" }, spark);
       on = true; phase = "wait"; wait = 0.9; u = 0;
       // the first time the reader reaches the chapters, the lit thread draws itself down to where they stopped
@@ -409,7 +411,7 @@
     function tick(dt) {
       if (!on || !drawn || reduced() || document.hidden || !torn || !torn.isConnected) return;
       const rak = root.getAttribute("data-rakta") === "on";
-      flash *= Math.pow(0.02, dt); hubDot.setAttribute("opacity", flash.toFixed(3));
+      if (flash > 0) { flash *= Math.pow(0.02, dt); if (flash < 0.004) flash = 0; hubDot.style.opacity = flash.toFixed(3); }
       if (phase === "wait") {
         wait -= dt; if (wait > 0) return;
         if (rak && ((performance.now() / 1000) % 1.15) / 1.15 > 0.1) return;   // in the battle the drop leaves on a beat
@@ -419,13 +421,14 @@
       const T = torn.getBoundingClientRect(), vy = T.top + p[1];
       nodes.forEach((n) => { if (!n.hit && n.read && n !== target && n.s <= s) { n.hit = true; n.el.classList.remove("ping"); void n.el.offsetWidth; n.el.classList.add("ping"); } });
       if (vy > -200 && vy < window.innerHeight + 200) {
-        const a = Math.min(1, u * 8) * (u > 0.95 ? (1 - u) / 0.05 : 1), tl = Math.min(130, s);
-        spark.setAttribute("transform", `translate(${p[0].toFixed(1)},${p[1].toFixed(1)})`); spark.setAttribute("opacity", a.toFixed(3));
-        const q = []; for (let i = 0; i <= 8; i++) q.push(at(s - tl + tl * i / 8)); tail.setAttribute("points", q.map((v) => v[0].toFixed(1) + "," + v[1].toFixed(1)).join(" ")); tail.setAttribute("opacity", a.toFixed(3));
-        tailG.setAttribute("x1", q[0][0].toFixed(1)); tailG.setAttribute("y1", q[0][1].toFixed(1)); tailG.setAttribute("x2", p[0].toFixed(1)); tailG.setAttribute("y2", p[1].toFixed(1));
-      } else { spark.setAttribute("opacity", 0); tail.setAttribute("opacity", 0); }
+        const a = Math.min(1, u * 8) * (u > 0.95 ? (1 - u) / 0.05 : 1), tl = Math.min(130, s), ox = p[0] - BX, oy = p[1] - BY;
+        box.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`; box.style.opacity = a.toFixed(3);
+        const q = []; for (let i = 0; i <= 8; i++) q.push(at(s - tl + tl * i / 8));
+        tail.setAttribute("points", q.map((v) => (v[0] - ox).toFixed(1) + "," + (v[1] - oy).toFixed(1)).join(" "));
+        tailG.setAttribute("x1", (q[0][0] - ox).toFixed(1)); tailG.setAttribute("y1", (q[0][1] - oy).toFixed(1)); tailG.setAttribute("x2", BX); tailG.setAttribute("y2", BY);
+      } else box.style.opacity = 0;
       if (u >= 1) {
-        phase = "wait"; wait = rak ? 1.6 : 2.6; spark.setAttribute("opacity", 0); tail.setAttribute("opacity", 0);
+        phase = "wait"; wait = rak ? 1.6 : 2.6; box.style.opacity = 0;
         const land = target || nodes[0]; land.el.classList.remove("land"); void land.el.offsetWidth; land.el.classList.add("land");
       }
     }
@@ -569,6 +572,11 @@
   holdBtn.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") enter(true); });
   $("#holdSkip").addEventListener("click", () => enter(false));
 
+  if (/[?&]perf=1/.test(location.search)) {
+    const pv = document.createElement("pre"); pv.className = "perf-hud"; document.body.appendChild(pv);
+    setInterval(() => { const P = window.DVPerf; if (!P) return;
+      pv.textContent = `${P.fps} fps   ${P.hz || "?"} Hz   ${P.late}% late${P.calm ? "   resting" : ""}\nlevel ${P.lv} of 3   resolution ${Math.round(P.q * 100)}%   ${P.w}x${P.h}\n${(P.gpu || "unknown GPU").replace(/^ANGLE \(|\(0x[0-9A-F]+\)| Direct3D.*$/gi, "")}`; }, 500);
+  }
   // ---------- start ----------
   updateCount();
   go(true);
