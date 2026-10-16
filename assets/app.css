@@ -59,6 +59,7 @@ html.menu-open .bar { transform: none; opacity: 1; }
 .menu-open .menu-btn .lines i:first-child { transform: translateY(2.5px) rotate(20deg); } .menu-open .menu-btn .lines i:last-child { transform: translateY(-2.5px) rotate(-20deg); }
 .reader-tools { display: none; gap: 10px; } [data-page="reader"] ~ .x, .on-reader .reader-tools { display: inline-flex; }
 
+.about .verse { margin: 2.2em 0 0; font-family: var(--f-deva); font-size: 1.15em; line-height: 1.95; color: var(--bone-2); }
 /* ---------- the menu ---------- */
 .menu { position: fixed; inset: 0; z-index: 28; background: color-mix(in srgb, var(--ink-2) 94%, transparent); clip-path: inset(0 0 100% 0); transition: clip-path 0.9s var(--ease); display: grid; align-content: center; padding: 100px var(--gutter) 60px; }
 .menu-open .menu { clip-path: inset(0 0 0 0); }

@@ -157,7 +157,7 @@
       <ol class="sums">${C.chapters.map((c) => `<li class="${c.n <= r ? "" : "is-veiled"}"><p class="kicker"><span>Chapter ${WORDS[c.n]}</span><span>${esc(c.pov)}</span></p><h3>${esc(c.title)} <span lang="sa">${esc(c.deva)}</span></h3><p>${c.n <= r ? esc(c.summary) : "Read Chapter " + WORDS[c.n] + " to unveil this."}</p></li>`).join("")}</ol>${foot()}`;
   }
   // the disclaimer and the author's page: their paragraphs come from tools/site_v2/disclaimer.md and author.md (already escaped by the build)
-  const paras = (ps) => (ps || []).map((p) => (p.h ? `<h2>${p.t}</h2>` : `<p>${p.t.replace("{year}", new Date().getFullYear())}</p>`)).join("");
+  const paras = (ps) => (ps || []).map((p) => (p.v ? `<p class="verse" lang="sa">${p.t}</p>` : p.h ? `<h2>${p.t}</h2>` : `<p>${p.t.replace("{year}", new Date().getFullYear())}</p>`)).join("");
   const disclaimer = () => `<section class="page-head"><p class="kicker"><span>Disclaimer</span></p><h1 class="page-title">A work of fiction</h1></section>
       <section class="about">${paras(C.disclaimer)}</section>${foot()}`;
   const author = () => `<section class="page-head"><p class="kicker"><span>About the author</span></p><h1 class="page-title">${esc(C.author)}</h1></section>
