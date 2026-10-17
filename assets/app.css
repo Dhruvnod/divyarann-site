@@ -203,11 +203,11 @@ html[data-rakta="on"] .th-dot { display: none; } html[data-rakta="on"] .th-drop 
 .on-reader .tearline-tip.show { opacity: 1; }
 .tearline .base { stroke: var(--line-2); } .tearline .lit { stroke: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
 /* the bookmark: a word lit from under the type, violet in Akash and a reddish gold in Grahan */
-:root { --bm: #a68aff; --bm-glow: rgba(146, 110, 255, 0.5); }
-:root[data-palette="grahan"] { --bm: #e3874a; --bm-glow: rgba(230, 114, 56, 0.5); }
-.prose mark.bm { color: color-mix(in srgb, var(--bm) 30%, #fffaf2); background: radial-gradient(closest-side, color-mix(in srgb, var(--bm) 62%, transparent), color-mix(in srgb, var(--bm) 28%, transparent) 62%, transparent) center / 100% 100% no-repeat;
+:root { --bm: #a68aff; --bm-glow: rgba(146, 110, 255, 0.5); --bm-ink: #e4d8f6; --bm-a: rgba(166, 138, 255, 0.62); --bm-b: rgba(166, 138, 255, 0.28); --bm-c: rgba(166, 138, 255, 0.24); }
+:root[data-palette="grahan"] { --bm: #e3874a; --bm-glow: rgba(230, 114, 56, 0.5); --bm-ink: #f7d8c0; --bm-a: rgba(227, 135, 74, 0.62); --bm-b: rgba(227, 135, 74, 0.28); --bm-c: rgba(227, 135, 74, 0.24); }   /* plain rgba, not color-mix: older Samsung Internet has none */
+.prose mark.bm { color: var(--bm-ink); background: radial-gradient(closest-side, var(--bm-a), var(--bm-b) 62%, transparent) center / 100% 100% no-repeat;
   padding: 0.06em 0.3em; margin: 0 -0.3em; border-radius: 0.6em; -webkit-box-decoration-break: clone; box-decoration-break: clone;
-  text-shadow: 0 0 8px var(--bm), 0 0 22px var(--bm-glow); box-shadow: 0 0 26px 4px color-mix(in srgb, var(--bm) 24%, transparent); transition: color 1.2s var(--ease); }
+  text-shadow: 0 0 8px var(--bm), 0 0 22px var(--bm-glow); box-shadow: 0 0 26px 4px var(--bm-c); transition: color 1.2s var(--ease); }
 .prose mark.bm.bm-in { animation: bmIn 1.1s var(--ease) both; }
 .prose mark.bm.bm-flare { animation: bmFlare 2s var(--ease); }
 .prose mark.bm.bm-out { animation: bmOut 0.7s var(--ease) forwards; }
@@ -216,16 +216,17 @@ html[data-rakta="on"] .th-dot { display: none; } html[data-rakta="on"] .th-drop 
 @keyframes bmFlare { 30% { background-size: 160% 160%; text-shadow: 0 0 12px var(--bm), 0 0 34px var(--bm-glow); box-shadow: 0 0 46px 10px var(--bm-glow); } }
 @keyframes bmOut { to { background-size: 0% 20%; color: var(--bone); text-shadow: 0 0 0 transparent; box-shadow: 0 0 0 0 transparent; } }
 .bm-charge { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 30; pointer-events: none; border-radius: 999px; opacity: 0; transform: scale(0.55);
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--bm) 62%, transparent), color-mix(in srgb, var(--bm) 22%, transparent) 62%, transparent);
+  background: radial-gradient(closest-side, var(--bm-a), var(--bm-b) 62%, transparent);
   box-shadow: 0 0 30px 6px var(--bm-glow); mix-blend-mode: screen; transition: opacity 0.18s var(--ease), transform 0.18s var(--ease); }
 .bm-charge.go { opacity: 1; transform: none; transition: opacity 0.85s linear, transform 0.85s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.bm-charge.off { transform: scale(1.35); background: radial-gradient(closest-side, transparent 48%, color-mix(in srgb, var(--bm) 34%, transparent) 70%, transparent); box-shadow: none; }
+.bm-charge.off { transform: scale(1.35); background: radial-gradient(closest-side, transparent 48%, var(--bm-b) 70%, transparent); box-shadow: none; }
 .bm-charge.off.go { transform: scale(0.85); }
 .tearline-mark { position: fixed; left: 0; top: 0; z-index: 3; width: 24px; height: 24px; margin: -12px 0 0 -12px; padding: 0; border: 0; background: none; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.5s var(--ease); -webkit-appearance: none; appearance: none; }
 .tearline-mark::before { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; transform: rotate(45deg); background: var(--bm); box-shadow: 0 0 8px 2px var(--bm-glow), 0 0 20px 4px var(--bm-glow); transition: transform 0.3s var(--ease); }
 .tearline-mark:hover::before { transform: rotate(45deg) scale(1.35); }
 .on-reader .tearline-mark.show { opacity: 1; pointer-events: auto; }
-@media (hover: none) and (pointer: coarse) { .prose { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; } }   /* the hold is the bookmark, not a text selection */
+.dv-touch .prose { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }   /* the hold is the bookmark, not a text selection */
+@media (hover: none) and (pointer: coarse) { .prose { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .prose mark.bm { animation: none !important; } .bm-charge { transition: none !important; } }
 .dv-still .prose mark.bm { animation: none !important; }
 .ch-end { max-width: 34em; margin: 0 auto; padding: 60px var(--gutter) 140px; display: grid; gap: 26px; text-align: center; justify-items: center; }

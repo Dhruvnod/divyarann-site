@@ -587,25 +587,34 @@
       glow.classList.toggle("off", off); glow.classList.remove("go"); void glow.offsetWidth; glow.classList.add("go");
     }
     function cancel() { if (!press) return; clearTimeout(press.t0); clearTimeout(press.t1); press = null; glow.classList.remove("go"); }
-    document.addEventListener("pointerdown", (e) => {
-      kind = e.pointerType || "mouse"; swallow = false; cancel();
-      if (kind === "mouse" || !e.isPrimary || !live() || !prose.contains(e.target)) return;
-      const h = hitAt(e.clientX, e.clientY, 10); if (!h) return;
-      const p = press = { x: e.clientX, y: e.clientY };
+    // the hold follows touch events, not pointer events: a browser that starts its own long-press handling cancels the
+    // pointer but keeps sending touches. Samsung phones also report their screens as touchpads, so "(hover: none)" never
+    // matches there: a finger on the page is what turns off text selection in the chapter (.dv-touch)
+    document.addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse") { kind = "mouse"; swallow = false; cancel(); } }, { passive: true });
+    document.addEventListener("touchstart", (e) => {
+      kind = "touch"; swallow = false; cancel(); root.classList.add("dv-touch");
+      const tc = e.touches[0];
+      if (e.touches.length !== 1 || !live() || !prose.contains(e.target)) return;
+      const h = hitAt(tc.clientX, tc.clientY, 10); if (!h) return;
+      const p = press = { x: tc.clientX, y: tc.clientY, at: performance.now() };
       p.t0 = setTimeout(() => charge(h, !!(mark && mark.contains(h[0]))), WAIT);
-      p.t1 = setTimeout(() => {
-        if (press !== p) return; cancel();
-        const h2 = hitAt(p.x, p.y, 10); if (!h2) return;
-        swallow = true; try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(12); } catch (err) {}
-        toggle(h2);
-      }, HOLD);
+      p.t1 = setTimeout(() => commit(p), HOLD);
     }, { passive: true });
-    document.addEventListener("pointermove", (e) => { if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) cancel(); }, { passive: true });
-    ["pointerup", "pointercancel"].forEach((t) => document.addEventListener(t, cancel, { passive: true }));
+    function commit(p) {
+      if (press !== p) return; cancel();
+      const h2 = hitAt(p.x, p.y, 10); if (!h2) return;
+      swallow = true; try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(12); } catch (err) {}
+      toggle(h2);
+    }
+    document.addEventListener("touchmove", (e) => { const tc = e.touches[0]; if (press && (e.touches.length > 1 || !tc || Math.hypot(tc.clientX - press.x, tc.clientY - press.y) > 14)) cancel(); }, { passive: true });
+    document.addEventListener("touchend", cancel, { passive: true });
+    // a browser that claims a still long press for itself cancels the touch: past half the hold, that counts as the hold
+    document.addEventListener("touchcancel", () => { if (press && performance.now() - press.at >= 450) commit(press); else cancel(); }, { passive: true });
     window.addEventListener("scroll", cancel, { passive: true });
-    // the tap that ends a hold is not also a tap on the word (a glossary note), and a long press opens no menu
+    // the tap that ends a hold is not also a tap on the word (a glossary note); a long press opens no menu and selects nothing
     document.addEventListener("click", (e) => { if (swallow) { swallow = false; e.preventDefault(); e.stopPropagation(); } }, true);
     document.addEventListener("contextmenu", (e) => { if (kind !== "mouse" && live() && prose.contains(e.target)) e.preventDefault(); });
+    document.addEventListener("selectstart", (e) => { if (kind === "touch" && live() && prose.contains(e.target.nodeType === 1 ? e.target : e.target.parentNode)) e.preventDefault(); });
     // computers: a double-click, without the browser selecting the word first
     document.addEventListener("mousedown", (e) => { if (e.detail > 1 && live() && prose.contains(e.target)) e.preventDefault(); });
     document.addEventListener("dblclick", (e) => {
@@ -642,7 +651,7 @@
     // where the bookmark lies along the chapter, 0 to 1 (or -1), for the mark on the reading line
     const at = (r) => { if (!mark || !mark.isConnected || !r.height) return -1; const m = mark.getBoundingClientRect(); return Math.min(1, Math.max(0, (m.top + m.height / 2 - r.top) / r.height)); };
     // told once, when they first start reading a chapter
-    function hint() { if (hinted) return; hinted = true; try { localStorage.setItem("divyarann-bmhint", "1"); } catch (e) {} setTimeout(() => { if (!Object.keys(BM).length) toast(coarse.matches ? "Hold a word to leave a bookmark" : "Double-click a word to leave a bookmark", 4200); }, 600); }
+    function hint() { if (hinted) return; hinted = true; try { localStorage.setItem("divyarann-bmhint", "1"); } catch (e) {} setTimeout(() => { if (!Object.keys(BM).length) toast(coarse.matches || root.classList.contains("dv-touch") ? "Hold a word to leave a bookmark" : "Double-click a word to leave a bookmark", 4200); }, 600); }
     return { mount, at, hint };
   })();
 
@@ -679,6 +688,32 @@
   }));
   if (root.getAttribute("data-palette") === "grahan") document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === "grahan")));
   $("#sndBtn").addEventListener("click", () => sound.set(!sound.on));
+
+  // ---------- phones: the book fills the screen. A browser grants full screen only from a tap, so the first tap asks for
+  //            it, and so does every tap after the reader leaves it. iPhones give pages no full screen: added to the Home
+  //            Screen, the site opens as an app without the browser's bars (the manifest), and they are told so once ----------
+  (() => {
+    const phone = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 600;
+    const app = (window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches) || navigator.standalone === true;
+    if (!phone || app) return;
+    const req = root.requestFullscreen || root.webkitRequestFullscreen, on = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (req && (document.fullscreenEnabled || document.webkitFullscreenEnabled)) {
+      let asking = false;
+      const ask = () => {
+        if (asking || on() || (navigator.userActivation && !navigator.userActivation.isActive)) return;
+        asking = true;
+        try { const p = req.call(root, { navigationUI: "hide" }); if (p && p.then) p.then(() => { asking = false; }, () => { asking = false; }); else asking = false; } catch (e) { asking = false; }
+      };
+      document.addEventListener("touchend", ask, { passive: true }); document.addEventListener("click", ask, { passive: true });
+      return;
+    }
+    if (!/iP(hone|od)/.test(navigator.userAgent)) return;
+    let told = false; try { told = !!localStorage.getItem("divyarann-fshint"); } catch (e) {}
+    if (told) return;
+    const tell = () => { try { localStorage.setItem("divyarann-fshint", "1"); } catch (e) {} setTimeout(() => toast("Full screen: Share, then Add to Home Screen", 5200), 3500); };
+    if (!root.classList.contains("is-intro")) tell();
+    else { const mo = new MutationObserver(() => { if (!root.classList.contains("is-intro")) { mo.disconnect(); tell(); } }); mo.observe(root, { attributes: true, attributeFilter: ["class"] }); }
+  })();
 
   // ---------- the threshold: the first visit is an opening act, a return is a glance ----------
   const intro = $("#intro"), hold = $("#hold"), holdBtn = $("#holdBtn"), fg = holdBtn.querySelector(".fg");
