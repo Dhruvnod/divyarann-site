@@ -30,6 +30,13 @@
     setReached(n) { P.read = {}; P.demo = 0; for (let i = 1; i <= n; i++) P.read[i] = 1; save(); fire(); },
     demo(n) { P.demo = n; save(); fire(); },
   };
+  // the bookmark: one word in each chapter, kept as { chapter: { p: paragraph, o: where in it, w: the word, t: when } }
+  const BKEY = "divyarann-bookmark";
+  let BM = {};
+  try { BM = JSON.parse(localStorage.getItem(BKEY) || "{}") || {}; } catch (e) {}
+  const bmSave = () => { try { localStorage.setItem(BKEY, JSON.stringify(BM)); } catch (e) {} };
+  // a bookmark left after the last chapter they finished is where they stopped reading
+  const bmBack = () => { let last = 0, best = 0; for (const k in P.read) last = Math.max(last, +P.read[k] || 0); for (const k in BM) if (chap(+k) && BM[k].t > last && (!best || BM[k].t > BM[best].t)) best = +k; return best; };
   function updateCount() { const n = DVR.reached(); const el = $("#litCount b"); if (el) el.textContent = pad(n); }
   window.addEventListener("dvr:progress", updateCount);
 
@@ -52,6 +59,7 @@
     const r = DVR.reached();
     const begin = r >= C.released ? 1 : r + 1;
     const nextN = r >= C.released ? 0 : r + 1;
+    const back = bmBack();
     const rows = C.chapters.map((c) => `
       <li class="ix-row${DVR.isRead(c.n) ? " is-read" : ""}${c.n === nextN ? " is-next" : ""}" data-n="${c.n}"><a class="ix-link" href="/read/${c.n}/">
         <span class="ix-side ix-l"><span class="ix-t">${esc(c.title)}</span><span class="ix-g">${esc(c.gloss)}</span></span>
@@ -71,7 +79,7 @@
       <section class="section premise" data-scene="hero">
         <p class="kicker"><span>Seven tears</span><span>One above Dwarka</span></p>
         <p class="premise-text" data-lines data-hush>${esc(C.lede)}</p>
-        <div class="cta-row" data-hush><a class="cta" href="/read/${begin}/">${r === 0 ? "Begin · Chapter One" : r >= C.released ? "Read again · Chapter One" : "Continue · Chapter " + WORDS[begin]}</a><a class="cta ghost" href="/read/">All chapters</a></div>
+        <div class="cta-row" data-hush><a class="cta" href="/read/${back || begin}/">${back ? "Your bookmark · Chapter " + WORDS[back] : r === 0 ? "Begin · Chapter One" : r >= C.released ? "Read again · Chapter One" : "Continue · Chapter " + WORDS[begin]}</a><a class="cta ghost" href="/read/">All chapters</a></div>
         <p class="nogl-note fine" style="margin-top:28px">The sky would not open on this device. The story is all here.</p>
       </section>
       <section class="section index" data-scene="index">
@@ -92,7 +100,7 @@
       <ol class="toc">${C.chapters.map((c) => `
         <li class="toc-row${DVR.isRead(c.n) ? " is-read" : ""}" data-n="${c.n}"><a href="/read/${c.n}/">
           <span class="toc-n">Chapter ${WORDS[c.n]}</span><span class="toc-t">${esc(c.title)}</span><span class="toc-d" lang="hi">${esc(c.deva)}</span>
-          <span class="toc-s">${esc(c.summary)}</span><span class="toc-m">${esc(c.pov)} · ${c.minutes} min${DVR.isRead(c.n) ? " · lit" : ""}</span></a></li>`).join("")}
+          <span class="toc-s">${esc(c.summary)}</span><span class="toc-m">${esc(c.pov)} · ${c.minutes} min${DVR.isRead(c.n) ? " · lit" : ""}${BM[c.n] ? " · bookmarked" : ""}</span></a></li>`).join("")}
         ${C.next ? `<li class="toc-row is-locked"><span><span class="toc-n">Chapter ${WORDS[C.next.n]}</span><span class="toc-t">Sealed</span><span class="toc-s">${esc(nextLine())}</span></span></li>` : ""}
       </ol>${follow()}${foot()}`;
   }
@@ -277,7 +285,10 @@
   function mailPage(kick, title, line, ctas) { return `<section class="page-head sealed-page"><p class="kicker"><span>${kick}</span></p><h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><div class="cta-row">${ctas}</div></section>${foot()}`; }
   function notFound() { return `<section class="page-head sealed-page"><p class="kicker"><span>Not found</span></p><h1 class="page-title">This page is not in the book</h1><p class="page-lede">The link may be old, or the page may not have opened yet.</p><div class="cta-row"><a class="cta" href="/">Back to the threshold</a><a class="cta ghost" href="/read/">All chapters</a></div></section>${foot()}`; }
   const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann", author: "About the author · Divyarann", disclaimer: "Disclaimer · Divyarann" };
-  let current = null, navId = 0, ctx = null;
+  let current = null, navId = 0, ctx = null, landing = false;
+  // the page places itself (the bookmark, or the top); ScrollTrigger keeps its own copy of this setting, so it is told too
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  if (ST && ST.clearScrollMemory) ST.clearScrollMemory("manual");
   function routeKey() {
     const p = location.pathname.replace(/\/index\.html$/, "/").replace(/([^/])$/, "$1/"), h = (location.hash || "").replace(/^#\/?/, "");
     if (p === "/" && /^(story|tears|powers|codex|about|author|disclaimer|chapters|ch-\d+)$/.test(h)) return h;
@@ -303,7 +314,7 @@
     if (lenis) lenis.scrollTo(0, { immediate: true, force: true }); else window.scrollTo(0, 0);
     current = { name, n };
     document.title = name === "reader" ? `Chapter ${WORDS[n]}: ${chap(n) ? chap(n).title : ""} · Divyarann` : TITLES[name] || TITLES.home;
-    mount(name, n);
+    landing = true; mount(name, n); landing = false;
     if (window.DVGL) window.DVGL.enter(name, { n, first });
     sound.mode(name === "reader" ? "reading" : "ambient");
     if (!first) { openTear(); const h1 = view.querySelector("h1"); if (h1) { h1.tabIndex = -1; h1.focus({ preventScroll: true }); } }
@@ -504,17 +515,141 @@
   tlClip.appendChild(tlRect); tlDefs.appendChild(tlClip); tearline.insertBefore(tlDefs, tearline.firstChild); tlLit.setAttribute("clip-path", "url(#tlClip)");
   const tlTip = document.createElement("span"); tlTip.className = "tearline-tip"; tlTip.setAttribute("aria-hidden", "true"); document.body.appendChild(tlTip);
   const tlX = (y) => { for (let i = 1; i < tlPts.length; i++) if (tlPts[i][1] >= y) { const v = (y - tlPts[i - 1][1]) / Math.max(0.01, tlPts[i][1] - tlPts[i - 1][1]); return tlPts[i - 1][0] + (tlPts[i][0] - tlPts[i - 1][0]) * v; } return 8; };
-  function tlSet(p) {
+  const tlNotch = document.createElement("button"); tlNotch.type = "button"; tlNotch.className = "tearline-mark"; tlNotch.title = "Back to your bookmark"; tlNotch.setAttribute("aria-label", "Back to your bookmark"); document.body.appendChild(tlNotch);
+  function tlSet(p, pm) {
     tlRect.setAttribute("height", (p * 1000 + 2).toFixed(1));
-    const b = tearline.getBoundingClientRect(), x = b.left + b.width / 2 + (tlX(p * 1000) - 8) * (b.width / 16);
-    tlTip.style.transform = `translate(${x.toFixed(1)}px, ${(b.top + p * b.height).toFixed(1)}px)`;
+    const b = tearline.getBoundingClientRect(), px = (q) => b.left + b.width / 2 + (tlX(q * 1000) - 8) * (b.width / 16);
+    tlTip.style.transform = `translate(${px(p).toFixed(1)}px, ${(b.top + p * b.height).toFixed(1)}px)`;
     tlTip.classList.toggle("show", p > 0.002 && p < 0.998);
+    const on = pm >= 0; tlNotch.classList.toggle("show", on);
+    if (on) tlNotch.style.transform = `translate(${px(pm).toFixed(1)}px, ${(b.top + pm * b.height).toFixed(1)}px)`;
   }
   window.addEventListener("resize", () => { if (typeof readerScroll === "function") readerScroll(); });
   let readerScroll = null;
+
+  // ---------- the bookmark: one word in each chapter. Held for a moment on a phone, or double-clicked on a computer, it lights
+  //            (violet in Akash, a reddish gold in Grahan); the chapter reopens at it, and the same gesture puts it out ----------
+  const bookmark = (() => {
+    const WORD = /[\p{L}\p{M}\p{N}]+(?:[’'-][\p{L}\p{M}\p{N}]+)*/gu, HOLD = 1000, WAIT = 150, coarse = window.matchMedia("(hover: none) and (pointer: coarse)");
+    let prose = null, n = 0, mark = null, kind = "mouse", press = null, swallow = false, hinted = false;
+    try { hinted = !!localStorage.getItem("divyarann-bmhint"); } catch (e) {}
+    const glow = document.createElement("span"); glow.className = "bm-charge"; glow.setAttribute("aria-hidden", "true"); document.body.appendChild(glow);
+    const live = () => !!prose && prose.isConnected;
+    const texts = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), out = []; while (w.nextNode()) out.push(w.currentNode); return out; };
+    const blockOf = (node) => { let el = node && (node.nodeType === 1 ? node : node.parentNode); while (el && el.parentNode !== prose) el = el.parentNode; return el; };
+    const span = (h) => { const r = document.createRange(); r.setStart(h[0], h[1]); r.setEnd(h[0], h[2]); return r; };
+    // the word under a point: every word of the paragraph there is measured, and the nearest within reach of the finger wins
+    function hitAt(x, y, reach) {
+      if (!live()) return null;
+      const el = document.elementFromPoint(x, y), block = el && el !== prose && prose.contains(el) ? blockOf(el) : null;
+      if (!block || block.classList.contains("scene-break")) return null;
+      const r = document.createRange(); let best = null, bd = reach + 0.01;
+      for (const t of texts(block)) {
+        r.selectNodeContents(t); const tb = r.getBoundingClientRect(); if (y < tb.top - reach || y > tb.bottom + reach) continue;
+        WORD.lastIndex = 0; let m;
+        while ((m = WORD.exec(t.data))) {
+          r.setStart(t, m.index); r.setEnd(t, m.index + m[0].length);
+          for (const q of r.getClientRects()) { const d = Math.hypot(Math.max(q.left - x, 0, x - q.right), Math.max(q.top - y, 0, y - q.bottom)); if (d < bd) { bd = d; best = [t, m.index, m.index + m[0].length]; } }
+        }
+      }
+      return best;
+    }
+    const offsetIn = (block, t, a) => { let k = 0; for (const u of texts(block)) { if (u === t) return k + a; k += u.data.length; } return -1; };
+    function locate(b) {
+      const bl = prose.children;
+      if (bl[b.p]) { let k = 0; for (const t of texts(bl[b.p])) { if (b.o < k + t.data.length) { const a = b.o - k; if (t.data.substr(a, b.w.length) === b.w) return [t, a, a + b.w.length]; break; } k += t.data.length; } }
+      // the chapter was revised since: the same word nearest its old place, in its paragraph or the ones round it
+      for (const d of [0, 1, -1, 2, -2, 3, -3]) {
+        const block = bl[b.p + d]; if (!block) continue; let best = null, k = 0;
+        for (const t of texts(block)) { WORD.lastIndex = 0; let m; while ((m = WORD.exec(t.data))) if (m[0] === b.w) { const dist = Math.abs(k + m.index - b.o); if (!best || dist < best[3]) best = [t, m.index, m.index + m[0].length, dist]; } k += t.data.length; }
+        if (best) return best.slice(0, 3);
+      }
+      return null;
+    }
+    function light(h, cls) { const m = document.createElement("mark"); m.className = "bm" + (cls ? " " + cls : ""); span(h).surroundContents(m); return m; }
+    function douse(m) { m.classList.remove("bm-in", "bm-flare"); m.classList.add("bm-out"); setTimeout(() => { const p = m.parentNode; if (!p) return; while (m.firstChild) p.insertBefore(m.firstChild, m); m.remove(); p.normalize(); }, reduced() ? 0 : 700); }
+    function flare() { if (!mark) return; mark.classList.remove("bm-in", "bm-flare"); void mark.offsetWidth; mark.classList.add("bm-flare"); }
+    function toggle(h) {
+      if (mark && mark.contains(h[0])) { douse(mark); mark = null; delete BM[n]; bmSave(); toast("Bookmark removed"); }
+      else {
+        const block = blockOf(h[0]), b = { p: [...prose.children].indexOf(block), o: offsetIn(block, h[0], h[1]), w: h[0].data.slice(h[1], h[2]), t: Date.now() };
+        if (mark) douse(mark);
+        mark = light(h, "bm-in"); BM[n] = b; bmSave(); toast("Bookmarked · the chapter reopens here");
+      }
+      sound.tick(); if (readerScroll) readerScroll();
+    }
+    // where the word sits, so the page can be placed with it a little above the middle of the screen
+    const yFor = (el) => { const r = el.getBoundingClientRect(); return Math.max(0, window.scrollY + r.top + r.height / 2 - window.innerHeight * 0.45); };
+    // phones: hold a word; a light gathers on it for a second, and a move or a scroll lets it go
+    function charge(h, off) {
+      const b = span(h).getBoundingClientRect(), px = 12, py = 8;
+      Object.assign(glow.style, { left: (b.left - px) + "px", top: (b.top - py) + "px", width: (b.width + px * 2) + "px", height: (b.height + py * 2) + "px" });
+      glow.classList.toggle("off", off); glow.classList.remove("go"); void glow.offsetWidth; glow.classList.add("go");
+    }
+    function cancel() { if (!press) return; clearTimeout(press.t0); clearTimeout(press.t1); press = null; glow.classList.remove("go"); }
+    document.addEventListener("pointerdown", (e) => {
+      kind = e.pointerType || "mouse"; swallow = false; cancel();
+      if (kind === "mouse" || !e.isPrimary || !live() || !prose.contains(e.target)) return;
+      const h = hitAt(e.clientX, e.clientY, 10); if (!h) return;
+      const p = press = { x: e.clientX, y: e.clientY };
+      p.t0 = setTimeout(() => charge(h, !!(mark && mark.contains(h[0]))), WAIT);
+      p.t1 = setTimeout(() => {
+        if (press !== p) return; cancel();
+        const h2 = hitAt(p.x, p.y, 10); if (!h2) return;
+        swallow = true; try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(12); } catch (err) {}
+        toggle(h2);
+      }, HOLD);
+    }, { passive: true });
+    document.addEventListener("pointermove", (e) => { if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) cancel(); }, { passive: true });
+    ["pointerup", "pointercancel"].forEach((t) => document.addEventListener(t, cancel, { passive: true }));
+    window.addEventListener("scroll", cancel, { passive: true });
+    // the tap that ends a hold is not also a tap on the word (a glossary note), and a long press opens no menu
+    document.addEventListener("click", (e) => { if (swallow) { swallow = false; e.preventDefault(); e.stopPropagation(); } }, true);
+    document.addEventListener("contextmenu", (e) => { if (kind !== "mouse" && live() && prose.contains(e.target)) e.preventDefault(); });
+    // computers: a double-click, without the browser selecting the word first
+    document.addEventListener("mousedown", (e) => { if (e.detail > 1 && live() && prose.contains(e.target)) e.preventDefault(); });
+    document.addEventListener("dblclick", (e) => {
+      if (kind !== "mouse" || !live() || !prose.contains(e.target)) return;
+      const h = hitAt(e.clientX, e.clientY, 2); if (!h) return;
+      e.preventDefault(); const s = window.getSelection && window.getSelection(); if (s) s.removeAllRanges();
+      const pop = $("#pop"); if (pop) pop.classList.remove("show");
+      toggle(h);
+    });
+    tlNotch.addEventListener("click", () => {
+      if (!mark || !mark.isConnected) return; const y = yFor(mark);
+      if (lenis) lenis.scrollTo(y, { duration: 1.3 }); else window.scrollTo({ top: y, behavior: reduced() ? "auto" : "smooth" });
+      setTimeout(flare, reduced() ? 0 : 1100);
+    });
+    function mount(el, chN, land) {
+      cancel(); prose = el; n = chN; mark = null;
+      const b = BM[n], h = b ? locate(b) : null;
+      if (h) mark = light(h);
+      if (!b || !land) return;
+      const target = mark || prose.children[b.p]; if (!target) return;
+      // reopening the chapter: straight to the bookmark once the type has settled, then the word lights as the page appears
+      const jump = () => {
+        if (!target.isConnected) return; const y = yFor(target);
+        if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y);
+        if (readerScroll) readerScroll();
+        const greet = () => { if (!target.isConnected) return; flare(); toast("Back at your bookmark"); };
+        if (root.classList.contains("is-intro")) { const mo = new MutationObserver(() => { if (!root.classList.contains("is-intro")) { mo.disconnect(); setTimeout(greet, 450); } }); mo.observe(root, { attributes: true, attributeFilter: ["class"] }); }
+        else setTimeout(greet, 700);
+      };
+      // after a laid-out frame, or a moment later in a tab opened behind the current one (which draws no frames)
+      let once = false; const run = () => { if (!once) { once = true; jump(); } };
+      (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { requestAnimationFrame(() => requestAnimationFrame(run)); setTimeout(run, 160); });
+    }
+    // where the bookmark lies along the chapter, 0 to 1 (or -1), for the mark on the reading line
+    const at = (r) => { if (!mark || !mark.isConnected || !r.height) return -1; const m = mark.getBoundingClientRect(); return Math.min(1, Math.max(0, (m.top + m.height / 2 - r.top) / r.height)); };
+    // told once, when they first start reading a chapter
+    function hint() { if (hinted) return; hinted = true; try { localStorage.setItem("divyarann-bmhint", "1"); } catch (e) {} setTimeout(() => { if (!Object.keys(BM).length) toast(coarse.matches ? "Hold a word to leave a bookmark" : "Double-click a word to leave a bookmark", 4200); }, 600); }
+    return { mount, at, hint };
+  })();
+
   function mountReader(n) {
     const prose = $("#prose"), end = $("#chEnd");
-    const onScroll = () => { if (!prose || !prose.isConnected) return; const r = prose.getBoundingClientRect(), h = window.innerHeight; const p = Math.min(1, Math.max(0, (h * 0.6 - r.top) / r.height)); tlSet(p); };
+    bookmark.mount(prose, n, landing);
+    const onScroll = () => { if (!prose || !prose.isConnected) return; const r = prose.getBoundingClientRect(), h = window.innerHeight; const p = Math.min(1, Math.max(0, (h * 0.6 - r.top) / r.height)), pm = bookmark.at(r); tlSet(p, pm); if (p > 0.04) bookmark.hint(); };
     if (readerScroll) window.removeEventListener("scroll", readerScroll); readerScroll = onScroll; window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.disconnect(); if (DVR.markRead(n)) ritual(n); } }), { rootMargin: "0px 0px -30% 0px" });
     io.observe(end);
@@ -526,11 +661,11 @@
   }
   function ritual(n) { sound.light(); toast(`Chapter ${WORDS[n]} · a point is lit`); if (window.DVGL) window.DVGL.light(n); }
   let rs = 20; try { rs = +localStorage.getItem("divyarann-size") || 20; } catch (e) {} root.style.setProperty("--rs", rs + "px");
-  const setRs = (v) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (ST) ST.refresh(); };
+  const setRs = (v) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (ST) ST.refresh(); if (readerScroll) readerScroll(); };
   $("#aMinus").addEventListener("click", () => setRs(rs - 1)); $("#aPlus").addEventListener("click", () => setRs(rs + 1));
 
   // ---------- small things ----------
-  function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600); }
+  function toast(m, ms) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), ms || 2600); }
   window.DVToast = toast;
   const menuBtn = $("#menuBtn");
   function closeMenu() { root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); $("#menu").setAttribute("aria-hidden", "true"); if (lenis) lenis.start(); }
