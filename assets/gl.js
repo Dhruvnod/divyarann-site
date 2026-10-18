@@ -11,6 +11,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { CopyShader } from "three/addons/shaders/CopyShader.js";
 import { mergeGeometries, toCreasedNormals } from "three/addons/utils/BufferGeometryUtils.js";
 
 const root = document.documentElement;
@@ -104,6 +105,12 @@ float h13(vec3 p){ p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fra
 float vn3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(h13(i), h13(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h13(i + vec3(0.0, 1.0, 0.0)), h13(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
              mix(mix(h13(i + vec3(0.0, 0.0, 1.0)), h13(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h13(i + vec3(0.0, 1.0, 1.0)), h13(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z); }
+float fb3(vec3 p, int oct){ float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++){ if (i >= oct) break; v += a * vn3(p); p = p * 2.07 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return v; }`;
+// the same value noise read from a 32-cube texture: one filtered fetch, with the fraction smoothed so it stays as soft as the hashed one
+const NOISE3T = `
+uniform highp sampler3D uNoise3;
+float h13(vec3 p){ p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+float vn3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return texture(uNoise3, (i + f + 0.5) / 32.0).r; }
 float fb3(vec3 p, int oct){ float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++){ if (i >= oct) break; v += a * vn3(p); p = p * 2.07 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return v; }`;
 const FS_VERT = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }";
 const QUAD_VERT = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
@@ -230,7 +237,8 @@ function boot() {
   const HW = /[?&]hw=1/.test(location.search);
   const software = !HW && /swiftshader|llvmpipe|basic render|software/i.test(gpuName), strong = HW || /nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro/i.test(gpuName);
   const webgl2 = renderer.capabilities.isWebGL2, msaaOk = webgl2 && renderer.extensions.has("EXT_color_buffer_float");
-  const tier = software || !webgl2 ? 0 : coarse ? ((navigator.hardwareConcurrency || 4) >= 8 ? 2 : 1) : 3;
+  const WEAK = !strong && (coarse || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4), MSOK = strong && (window.devicePixelRatio || 1) < 1.5;
+  const tier = software || !webgl2 ? 0 : coarse ? ((navigator.hardwareConcurrency || 4) >= 8 ? 2 : 1) : WEAK ? 2 : 3;
   const TIER = [{ px: 0.6e6, n: 6000, oct: 3, bloom: 0.25 }, { px: 0.8e6, n: 14000, oct: 3, bloom: 0.3 }, { px: 1.2e6, n: 22000, oct: 4, bloom: 0.35 }, { px: strong ? 3.4e6 : 1.8e6, n: 30000, oct: 4, bloom: 0.4 }][tier];
   // resolution: Q scales the screen's own pixel ratio (up to 2). A discrete GPU starts at full sharpness; anything else starts
   // from its tier's pixel budget and climbs towards full sharpness while frames stay on time
@@ -238,9 +246,11 @@ function boot() {
   // and four levels of effects (glow resolution, how much dust, smoke detail, how often the smoke is redrawn, the stone's
   // detail and edge smoothing), each with a resolution ceiling. Late frames lower the level, so the effects lighten before
   // the image softens; frames on time first raise the resolution to the level's ceiling, then the level
-  const LVS = [[0.16, 0.35, 2, 3, 2, 0], [0.22, 0.55, 3, 2, 3, 2], [0.3, 0.75, 3, 1, 4, 4], [TIER.bloom, 1, TIER.oct, 1, 5, 4]].map(([bloom, parts, oct, neb, det, msaa], i) =>
-    ({ bloom: Math.min(bloom, TIER.bloom), parts, oct: Math.min(oct, TIER.oct), neb, det, msaa: msaaOk ? msaa : 0, q: strong ? (i ? 1 : 0.86) : [0.72, 0.86, 1, 1][i] }));
-  let LV = software ? 0 : strong ? 3 : 2;
+  const MSAAQ = /[?&]msaa=([0-8])/.exec(location.search), NEBQ = /[?&]neb=0/.test(location.search);
+  const LVS = [[0.16, 0.35, 2, 4, 2, 0], [0.22, 0.55, 3, 3, 3, 0], [0.3, 0.75, 3, 2, 4, MSOK ? 2 : 0], [TIER.bloom, 1, TIER.oct, 2, 5, MSOK ? 4 : 0]].map(([bloom, parts, oct, neb, det, msaa], i) =>
+    ({ bloom: Math.min(bloom, TIER.bloom), parts, oct: Math.min(oct, TIER.oct), neb, det, msaa: msaaOk ? (MSAAQ ? +MSAAQ[1] : msaa) : 0, q: strong ? (i ? 1 : 0.86) : [0.72, 0.86, 1, 1][i] }));
+  let LV = software ? 0 : strong ? 3 : WEAK ? 1 : 2;
+  const LVQ = /[?&]lv=([0-3])/.exec(location.search), BENCH = /[?&]bench=1/.test(location.search); if (LVQ) LV = +LVQ[1];
   let Q = strong ? 1 : Math.min(LVS[LV].q, Math.sqrt(TIER.px / fullPx()));
   const QMIN = strong ? 0.86 : software ? 0.4 : 0.6;
   const PERF = window.DVPerf = { fps: 60, q: Q, lv: LV, gpu: gpuName, software, strong, late: 0, calm: false, w: 0, h: 0 };
@@ -328,8 +338,17 @@ function boot() {
   const outerG = new THREE.Group(), innerG = new THREE.Group(), staticG = new THREE.Group(); tiltG.add(outerG, innerG, staticG);
   const haloParent = D.turns ? outerG : staticG;                           // the vignette turns with the rim, or stays under its chapters
   const litArr = new Float32Array(18), litTarget = new Float32Array(18);
-  const big = coarse ? 1536 : 2048;
-  const lineTex = (fn) => { const { c, x } = canvasFor(big, 380); fn(x); const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t; };
+  const big = tier >= 3 ? 2048 : tier >= 2 ? 1536 : 1024, LCH = webgl2 ? "r" : "a";
+  const lineTex = (fn) => { const { c, x } = canvasFor(big, 380); fn(x);
+    if (!webgl2) { const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t; }
+    const d = x.getImageData(0, 0, big, big).data, a = new Uint8Array(big * big);
+    for (let y = 0; y < big; y++) { const src = y * big * 4, dst = (big - 1 - y) * big; for (let i = 0; i < big; i++) a[dst + i] = d[src + i * 4 + 3]; }
+    const t = new THREE.DataTexture(a, big, big, THREE.RedFormat, THREE.UnsignedByteType);
+    t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.anisotropy = 8; t.unpackAlignment = 1; t.needsUpdate = true; return t; };
+  let noise3 = null;
+  if (webgl2) { const N = 32, nd = new Uint8Array(N * N * N), R3 = rng(77); for (let i = 0; i < nd.length; i++) nd[i] = (R3() * 256) | 0;
+    noise3 = new THREE.Data3DTexture(nd, N, N, N); noise3.format = THREE.RedFormat; noise3.type = THREE.UnsignedByteType; noise3.minFilter = noise3.magFilter = THREE.LinearFilter;
+    noise3.wrapS = noise3.wrapT = noise3.wrapR = THREE.RepeatWrapping; noise3.unpackAlignment = 1; noise3.needsUpdate = true; }
   const etchTex = lineTex(draw.etch);
   // the drawing as a haze: drawn off the canvas with its shadow brought back, so only the blurred copy is left (blur: shadow radius in canvas pixels)
   const softTex = (fn, blur) => { const size = 1024, { c, x } = canvasFor(size, 380), off = size * 3, k = size / 760; x.translate(-off / k, 0); x.shadowColor = "#fff"; x.shadowBlur = blur; x.shadowOffsetX = off; fn(x); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t; };
@@ -346,10 +365,10 @@ function boot() {
   function wheelMaterial(params, kind) {
     const m = new THREE.MeshStandardMaterial(Object.assign({ transparent: true, depthWrite: true }, params));
     m.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, W);
+      Object.assign(sh.uniforms, W); if (noise3) sh.uniforms.uNoise3 = { value: noise3 };
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aPart; varying vec3 vObj; varying vec3 vObjN; varying float vPart; varying vec2 vWrapUv;")
         .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObj = position; vObjN = normal; vPart = aPart; vWrapUv = vec2(0.0);\n#ifdef USE_WRAP\nvWrapUv = uv;\n#endif");
-      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\n" + NOISE3 + `
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\n" + (noise3 ? NOISE3T : NOISE3) + `
         uniform float uP, uA, uTime, uHl, uRune, uWs, uEtch; uniform int uDet; uniform float uLit[18]; uniform vec3 uGlow, uHot, uSteelDark, uSteel, uSteelWarm, uSteelEdge, uLeather, uLeather2; uniform sampler2D uEtchMap;
         uniform float uRough, uWear, uVeinK, uGrooveK, uHam, uFlick, uOx, uEtchK, uSmall, uCap;
         varying vec3 vObj; varying vec3 vObjN; varying float vPart; varying vec2 vWrapUv;
@@ -399,7 +418,7 @@ function boot() {
                   float w = 0.0007 + fwidth(t) * 0.6, mk = smoothstep(0.47, 0.5, r) * (1.0 - smoothstep(0.6, 0.64, r));
                   sVein = (1.0 - smoothstep(w, w * 2.6, abs(t - yq))) * mk * front; } }
               // the old wheel's drawing, cut into the face as light
-              sEtch = texture2D(uEtchMap, vObj.xy * (360.0 / 380.0) * 0.5 + 0.5).a * smoothstep(0.35, 0.8, vObjN.z) * uEtch * step(0.5, vPart);
+              sEtch = texture2D(uEtchMap, vObj.xy * (360.0 / 380.0) * 0.5 + 0.5).${LCH} * smoothstep(0.35, 0.8, vObjN.z) * uEtch * step(0.5, vPart);
               sH -= sGroove * 0.6 + sVein * 0.3 + sEtch * 0.25;
               // colour: blackened steel, plum-brown where it has oxidised, bright where it is worn
               vec3 a0 = mix(uSteelDark, uSteel, 0.35 + 0.4 * smoothstep(0.3, 0.72, mid)); a0 = mix(a0, uSteelWarm, min(1.0, smoothstep(0.55, 0.82, big) * 0.55 * uOx));
@@ -501,11 +520,13 @@ function boot() {
       float rt = length(q), r = length(p), ang = atan(p.x, p.y), a01 = fract(ang / 6.28318 + 1.0);
       float shown = 1.0, tip = 0.0;
       if (uP < 0.999){ float pp = uP * 1.08; shown = 1.0 - smoothstep(pp - 0.02, pp, a01 + 0.02 * vnoise(p * 30.0)); tip = exp(-abs(a01 - pp) * 60.0); }
-      float line = texture2D(uMap, vUv).a * uSharp + texture2D(uSoftMap, vUv).a * uSoft;
-      line = mix(line, texture2D(uFatMap, vUv).a * max(uSharp, 0.5), uSmall * uFat);
+      if (rt > uVigOut && r > 1.2 * uHS) { gl_FragColor = vec4(0.0); return; }
+      float line = texture2D(uMap, vUv).${LCH} * uSharp;
+      if (uSoft > 0.0) line += texture2D(uSoftMap, vUv).${LCH} * uSoft;
+      if (uSmall * uFat > 0.0) line = mix(line, texture2D(uFatMap, vUv).${LCH} * max(uSharp, 0.5), uSmall * uFat);
       // the chapter's wedge: petal i stands at i * 20 degrees, clockwise from the top, like the plate under it
       float f = a01 * 18.0, i0 = floor(f), t = f - i0, l0 = 0.0, l1 = 0.0;
-      for (int k = 0; k < 18; k++){ float fk = float(k); if (abs(fk - i0) < 0.5) l0 = uLit[k]; if (abs(fk - mod(i0 + 1.0, 18.0)) < 0.5) l1 = uLit[k]; }
+      if (uProg > 0.0) for (int k = 0; k < 18; k++){ float fk = float(k); if (abs(fk - i0) < 0.5) l0 = uLit[k]; if (abs(fk - mod(i0 + 1.0, 18.0)) < 0.5) l1 = uLit[k]; }
       float lit = mix(l0, l1, t * t * (3.0 - 2.0 * t));
       float dn = abs(f - uReach); dn = min(dn, 18.0 - dn); float nx = (1.0 - smoothstep(0.0, 1.0, dn)) * step(uReach, 17.5) * step(uReach + 0.5, uRel);   // the next chapter, if it is out
       float sealed = smoothstep(uRel - 0.6, uRel - 0.1, f) * (1.0 - smoothstep(17.5, 18.0, f)) * step(uRel, 17.5);   // chapters not yet released
@@ -600,6 +621,8 @@ function boot() {
   const msTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: LVS[LV].msaa });
   const composer = new EffectComposer(renderer, msTarget);
   composer.addPass(new RenderPass(scene, camera));
+  const SPLIT = !/[?&]split=0/.test(location.search), copyPass = new ShaderPass(CopyShader);
+  if (SPLIT) { composer.renderTarget2.samples = 0; copyPass.enabled = LVS[LV].msaa > 0; composer.addPass(copyPass); }
   const bloom = new UnrealBloomPass(new THREE.Vector2(4, 4), 0.8, 0.55, 1.0);
   const setB = bloom.setSize.bind(bloom); bloom.setSize = (a, b) => setB(a * LVS[LV].bloom, b * LVS[LV].bloom);
   composer.addPass(bloom); if (/[?&]nobloom=1/.test(location.search)) bloom.enabled = false;
@@ -613,7 +636,7 @@ function boot() {
         return clamp(O * rrt(I * (c / 0.6)), 0.0, 1.0); }
       vec3 srgb(vec3 c){ return mix(pow(c, vec3(0.41666)) * 1.055 - vec3(0.055), c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308)))); }
       void main(){ vec2 c = vUv - 0.5; float r2 = dot(c, c); vec2 off = c * r2 * uCA;
-        vec3 col = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
+        vec3 col = uCA > 0.0 ? vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b) : texture2D(tDiffuse, vUv).rgb;
         col = srgb(aces(max(col, vec3(0.0))));
         col *= 1.0 - uVignette * smoothstep(0.08, 0.55, r2);
         float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
@@ -702,20 +725,29 @@ function boot() {
     if (key === sized) return; sized = key;
     renderer.setPixelRatio(d); renderer.setSize(w, h, false); composer.setPixelRatio(d); composer.setSize(w, h);
     camera.aspect = w / h; camera.updateProjectionMatrix();
-    rtScale = d / (coarse ? 3 : 2);
+    rtScale = d / (coarse || LV < 2 ? 3 : 2);
     rt.setSize(Math.max(2, Math.round(w * rtScale)), Math.max(2, Math.round(h * rtScale))); nebU.uRes.value.set(rt.width, rt.height);
     partU.uPR.value = ptU.uPR.value = d; nebDirty = true; PERF.w = renderer.domElement.width; PERF.h = renderer.domElement.height;
   }
   resize(); window.addEventListener("resize", resize);
 
   // ---------- the loop ----------
-  let lastInput = performance.now(), frameNo = 0, calm = false, tilt = { x: 0, y: 0 }, tiltT = { x: 0, y: 0 };
+  let lastInput = performance.now(), frameNo = 0, skipAcc = 0, calm = false, tilt = { x: 0, y: 0 }, tiltT = { x: 0, y: 0 };
   ["scroll", "pointermove", "keydown", "touchstart", "wheel"].forEach((t) => window.addEventListener(t, (e) => { lastInput = performance.now(); if (t === "pointermove") { tiltT.x = e.clientX / window.innerWidth - 0.5; tiltT.y = e.clientY / window.innerHeight - 0.5; } }, { passive: true }));
   const SPIN = Math.PI * 2 / 236, SPIN_IN = Math.PI * 2 / 364;
-  function frame(dt) {
+  const GT = !BENCH ? null : (() => { const gl = renderer.getContext(), ext = gl.getExtension("EXT_disjoint_timer_query_webgl2"); if (!ext) return { begin() {}, end() {}, avg: () => -1 };
+    let cur = null; const pend = [], vals = [];
+    return { begin() { if (!cur) { cur = gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, cur); } },
+      end() { if (!cur) return; gl.endQuery(ext.TIME_ELAPSED_EXT); pend.push(cur); cur = null;
+        while (pend.length && gl.getQueryParameter(pend[0], gl.QUERY_RESULT_AVAILABLE)) { const q = pend.shift(); if (!gl.getParameter(ext.GPU_DISJOINT_EXT)) vals.push(gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6); gl.deleteQuery(q); } },
+      avg() { const v = vals.slice(-240); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : -1; } }; })();
+  const CPU = [];
+  function frame(dt) { const tf0 = BENCH ? performance.now() : 0; frameBody(dt); if (BENCH) CPU.push(performance.now() - tf0); }
+  function frameBody(dt) {
     const idle = performance.now() - lastInput;
     if (page === "reader" && idle > 30000 && S.boost < 0.01) return;                   // reading: rest once nobody moves
-    frameNo++; if (page === "reader" && idle > 4000 && frameNo % 3 && S.boost < 0.01) return;
+    frameNo++; skipAcc += dt; if (page === "reader" && S.boost < 0.01 && frameNo % (idle > 4000 || WEAK ? 3 : 2)) return;
+    dt = Math.min(skipAcc, 0.1); skipAcc = 0;
     const still = reduced();
     if (!still) T += dt;
     easeCols(still ? 1 : Math.min(1, dt * 3)); renderer.setClearColor(col.ink, 1); eclipse.material.color.copy(col.ink);
@@ -754,13 +786,15 @@ function boot() {
     S.boost *= Math.pow(0.35, dt);
     ptU.uA.value = S.pts * Math.min(1, Math.max(0, drawP * 1.4 - 0.4)); ptU.uScale.value = Math.max(D.ptMin, S.r / 260); ptU.uHover.value = hl;
     partU.uTime.value = T; partU.uAlpha.value = S.parts; partU.uSize.value = 24 * Math.max(0.6, Math.min(1.6, S.r / 300));
-    tearU.uOpen.value = S.tear; tearU.uTime.value = T;
+    tearU.uOpen.value = S.tear; tearU.uTime.value = T; tear.visible = S.tear > 0.002; eclipse.visible = eclipse.material.opacity > 0.001;
     nebU.uTime.value = T; nebU.uIntensity.value = S.neb; nebU.uGlow.value.set(S.cx / w, 1 - S.cy / canH, ringsA);
     nebU.uWheel.value.set(S.cx * rtScale, (canH - S.cy) * rtScale, S.r * rtScale, ringsA * Math.min(1, drawP * 1.5) * D.smoke);
     finU.uTime.value = still ? 0 : Math.floor(T * 24) / 24;
-    { const dk = D.dockFix ? sstep(170, 70, S.r) : 0; finPass.uniforms.uCA.value = 0.007 * (1 - dk * (1 - D.dockCA)); finPass.uniforms.uVignette.value = 0.5 * (1 - dk * (1 - D.dockVig)); }
-    if (nebDirty || calm || still || frameNo % LVS[LV].neb === 0) { renderer.setRenderTarget(rt); renderer.render(bgScene, bgCam); renderer.setRenderTarget(null); nebDirty = false; }   // the smoke changes slowly
+    { const dk = D.dockFix ? sstep(170, 70, S.r) : 0; finPass.uniforms.uCA.value = LV > 0 ? 0.007 * (1 - dk * (1 - D.dockCA)) : 0; finPass.uniforms.uVignette.value = 0.5 * (1 - dk * (1 - D.dockVig)); }
+    if (GT) GT.begin();
+    if (!NEBQ && (nebDirty || calm || still || frameNo % LVS[LV].neb === 0)) { renderer.setRenderTarget(rt); renderer.render(bgScene, bgCam); renderer.setRenderTarget(null); nebDirty = false; }   // the smoke changes slowly
     composer.render();
+    if (GT) GT.end();
   }
 
   // ---------- what the pages ask for ----------
@@ -797,13 +831,13 @@ function boot() {
   let period = 1000 / 60, recent = [], late = 0, count = 0, secT = 0, bad = 0, good = 0, warmT = 0, rest = 0;
   const lost = [0, 0, 0, 0];   // how often each level was lost; climbing back to it waits longer each time
   const applyLevel = () => { const L0 = LVS[LV]; nebU.uOct.value = L0.oct; W.uDet.value = L0.det; geo.setDrawRange(0, Math.floor(N * L0.parts)); PERF.lv = LV;
-    if (msTarget.samples !== L0.msaa) { composer.renderTarget1.samples = composer.renderTarget2.samples = L0.msaa; composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } };
+    if (msTarget.samples !== L0.msaa) { composer.renderTarget1.samples = L0.msaa; if (!SPLIT) composer.renderTarget2.samples = L0.msaa; composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } copyPass.enabled = SPLIT && L0.msaa > 0; bloom.enabled = LV > 0 && !/[?&]nobloom=1/.test(location.search); };
   function setLevel(n) { if (n < LV) lost[LV]++; LV = n; Q = Math.min(Q, LVS[LV].q); applyLevel(); resize(); PERF.q = Q; bad = good = 0; warmT = 3000; }
   applyLevel();
   function pace(time, dms) {
     const ms = Math.min(dms, 100);
     // nothing moving (no scroll, pointer, key or transition for a few seconds): about 30 frames a second is plenty for a slow wheel
-    calm = performance.now() - lastInput > 2500 && follow >= 1 && S.boost < 0.01 && !root.classList.contains("is-intro") && !(gs && (gs.isTweening(S) || gs.isTweening(partU.uW.value) || gs.isTweening(eclipse.position)));
+    calm = !BENCH && performance.now() - lastInput > 2500 && follow >= 1 && S.boost < 0.01 && !root.classList.contains("is-intro") && !(gs && (gs.isTweening(S) || gs.isTweening(partU.uW.value) || gs.isTweening(eclipse.position)));
     PERF.calm = calm;
     if (calm) { rest += ms; if (rest < 28) return; const step = rest; rest = 0; frame(Math.min(step, 50) / 1000); return; }
     rest = 0;
@@ -814,8 +848,8 @@ function boot() {
         const s = recent.slice().sort((a, b) => a - b); period = Math.max(4, s[Math.floor(s.length * 0.2)] || period);
         PERF.fps = Math.round(count * 1000 / secT); PERF.hz = Math.round(1000 / period);
         const lateShare = late / Math.max(1, count); PERF.late = Math.round(lateShare * 100);
-        if (warmT > 5000 && !HW) {
-          if (lateShare > 0.25) { good = 0; if (++bad >= 3) { if (LV > 0) setLevel(LV - 1); else if (Q > QMIN) { Q = Math.max(QMIN, Q * 0.9); resize(); bad = 0; } } }
+        if (warmT > (WEAK ? 3000 : 5000) && !HW && !LVQ) {
+          if (lateShare > 0.25) { good = 0; if (++bad >= (WEAK ? 2 : 3)) { if (LV > 0) setLevel(LV - 1); else if (Q > QMIN) { Q = Math.max(QMIN, Q * 0.9); resize(); bad = 0; } } }
           else if (lateShare < 0.05) { bad = 0; good++;
             if (Q < LVS[LV].q - 0.001) { if (good >= 4) { Q = Math.min(LVS[LV].q, Q * 1.1); resize(); good = 0; } }
             else if (LV < 3 && good >= 6 * Math.pow(2, Math.min(4, lost[LV + 1]))) setLevel(LV + 1); }
@@ -839,6 +873,10 @@ function boot() {
     scene.traverse((o) => { const m = o.material; if (!m) return; const u = m.uniforms; if (u) for (const k in u) { const v = u[k].value; if (v && v.isTexture && v.image) try { renderer.initTexture(v); } catch (e) {} } });
   })();
   window.__sceneReady = true;
+  if (BENCH) { let n = 0, t0 = 0; const tick = (t) => { if (!t0 && t > 6000) { t0 = t; CPU.length = 0; } if (t0) n++;
+    if (t0 && t - t0 > 5000) { const cpu = CPU.length ? CPU.reduce((a, b) => a + b, 0) / CPU.length : -1;
+      new Image().src = "/__bench?" + new URLSearchParams({ q: location.search, fps: (n * 1000 / (t - t0)).toFixed(1), gpums: GT.avg().toFixed(2), cpums: cpu.toFixed(2), lv: LV, Q: Q.toFixed(2), gpu: gpuName, w: renderer.domElement.width, h: renderer.domElement.height }); return; }
+    requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
   root.classList.remove("no-webgl");
 }
 
