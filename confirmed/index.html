@@ -21,30 +21,33 @@
 <meta property="og:title" content="Welcome · Divyarann">
 <meta property="og:description" content="Each new chapter will arrive in your inbox on the day it is released.">
 <meta property="og:url" content="https://www.divyarann.com/confirmed/">
-<meta property="og:image" content="https://www.divyarann.com/og-image.png">
+<meta property="og:image" content="https://www.divyarann.com/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500&display=swap">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
-<script>(function(){var d=document.documentElement;try{var p=localStorage.getItem("divyarann-palette");if(p==="grahan")d.setAttribute("data-palette","grahan");if(localStorage.getItem("divyarann-seen"))d.classList.add("returning");}catch(e){}var q=/[?&]palette=(akash|grahan)/.exec(location.search);if(q){try{localStorage.setItem("divyarann-palette",q[1]);}catch(e){}if(q[1]==="grahan")d.setAttribute("data-palette","grahan");else d.removeAttribute("data-palette");}if(/[?&]still=1/.test(location.search))d.classList.add("dv-still","returning");if(navigator.maxTouchPoints>0&&Math.min(screen.width,screen.height)<820)d.classList.add("dv-touch");d.classList.add("js","is-intro");})();</script>
+<script>(function(){var d=document.documentElement;try{var p=localStorage.getItem("divyarann-palette");if(p==="grahan")d.setAttribute("data-palette","grahan");if(localStorage.getItem("divyarann-seen"))d.classList.add("returning");}catch(e){}var q=/[?&]palette=(akash|grahan)/.exec(location.search);if(q){try{localStorage.setItem("divyarann-palette",q[1]);}catch(e){}if(q[1]==="grahan")d.setAttribute("data-palette","grahan");else d.removeAttribute("data-palette");}if(/[?&]still=1/.test(location.search))d.classList.add("dv-still","returning");if(navigator.maxTouchPoints>0&&Math.min(screen.width,screen.height)<820)d.classList.add("dv-touch");var bot=/bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|embedly|preview/i.test(navigator.userAgent);if(bot)d.classList.add("returning");d.classList.add("js");if(!bot)d.classList.add("is-intro");setTimeout(function(){if(!window.DVRoute){d.classList.remove("is-intro");var i=document.getElementById("intro");if(i)i.style.display="none";}},6000);})();</script>
 
-<link rel="stylesheet" href="/assets/app.css?v=2fbf862a67">
+<link rel="stylesheet" href="/assets/app.css?v=977ba04dab">
 </head>
 <body>
 <header class="bar" id="bar">
   <a class="mark" href="/" aria-label="Divyarann, home">Divyarann</a>
   <div class="bar-r">
     <span class="lit-count" id="litCount" aria-live="polite"><b>00</b> / 18 lit</span>
-    <span class="reader-tools" aria-label="Text size"><button type="button" id="aMinus" aria-label="Smaller text">A−</button><button type="button" id="aPlus" aria-label="Larger text">A+</button></span>
+    <span class="reader-tools" role="group" aria-label="Text size"><button type="button" id="aMinus" aria-label="Smaller text">A−</button><button type="button" id="aPlus" aria-label="Larger text">A+</button></span>
     <span class="pal" role="group" aria-label="Colours"><button type="button" data-p="akash" aria-pressed="true" aria-label="Akash colours" title="Akash"></button><button type="button" data-p="grahan" aria-pressed="false" aria-label="Grahan colours" title="Grahan"></button></span>
     <button type="button" class="snd" id="sndBtn" aria-pressed="false" aria-label="Sound" title="Sound"><i></i><i></i><i></i><i></i></button>
     <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu"><span>Menu</span><span class="lines" aria-hidden="true"><i></i><i></i></span></button>
   </div>
 </header>
 
-<nav class="menu" id="menu" aria-label="Pages" aria-hidden="true">
+<nav class="menu" id="menu" aria-label="Pages" aria-hidden="true" inert>
   <ol>
     <li><a href="/" data-route="home"><small>01</small>Threshold <span class="dv" lang="hi">द्वार</span></a></li>
     <li><a href="/read/" data-route="contents"><small>02</small>Chapters <span class="dv" lang="hi">अध्याय</span></a></li>
@@ -59,7 +62,7 @@
 
 <canvas id="gl" aria-hidden="true"></canvas>
 <svg class="tearline" id="tearline" viewBox="0 0 16 1000" preserveAspectRatio="none" aria-hidden="true"><path class="base"/><path class="lit"/></svg>
-<div id="app"><main id="view" tabindex="-1"><section class="page-head"><h1 class="page-title">Welcome to Divyarann</h1><p><a href="/read/1/">Start at Chapter One</a></p></section></main></div>
+<div id="app"><main id="view" tabindex="-1"><section class="page-head"><h1 class="page-title">Welcome to Divyarann</h1><p><a href="/read/1/">Start at Chapter One</a></p></section><footer class="foot"><div class="foot-in"><p>© 2026 Dhruv. All rights reserved.</p><p>Divyarann is a work of fiction. This is the draft web edition of Book One: chapters may be revised, and this edition may be withdrawn when the book is published. Please share the link rather than reposting chapters elsewhere.</p><p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a><a href="https://www.instagram.com/divyarann/" rel="noopener">Instagram</a><a href="/feed.xml">RSS</a></p></div></footer></main></div>
 
 <div class="tear-t" id="tearT" aria-hidden="true"><div class="half l"></div><div class="half r"></div><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path/></svg></div>
 
@@ -77,11 +80,11 @@
 <div class="toast" id="toast" role="status"></div>
 <div class="pop" id="pop" role="tooltip"></div>
 
-<script src="/assets/content.js?v=2fbf862a67"></script>
+<script src="/assets/content.js?v=977ba04dab"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
-<script src="/assets/app.js?v=2fbf862a67"></script>
-<script type="module" src="/assets/gl.js?v=2fbf862a67"></script>
+<script src="/assets/app.js?v=977ba04dab"></script>
+<script type="module" src="/assets/gl.js?v=977ba04dab"></script>
 </body>
 </html>

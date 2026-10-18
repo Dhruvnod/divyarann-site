@@ -28,6 +28,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 canvas#gl { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none; display: block; }
 #app { position: relative; z-index: 1; }
 html.is-intro #app, html.is-intro .bar { visibility: hidden; }
+html:not(.js) .bar-r button, html:not(.js) .bar-r .reader-tools { display: none; }   /* without scripts these controls do nothing */
 
 /* ---------- labels ---------- */
 .kicker { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin: 0; display: flex; flex-wrap: wrap; gap: 0.6em 1.6em; }

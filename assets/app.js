@@ -9,7 +9,7 @@
   const gs = window.gsap || null, ST = window.ScrollTrigger || null;
   const reduceMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
   const reduced = () => reduceMQ.matches || root.classList.contains("dv-still");
-  const WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen"];
+  const WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty", "Twenty-one", "Twenty-two", "Twenty-three", "Twenty-four", "Twenty-five", "Twenty-six"];
   const DEVA = (n) => String(n).replace(/\d/g, (d) => "०१२३४५६७८९"[d]);
   const pad = (n) => String(n).padStart(2, "0");
   const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -43,7 +43,7 @@
   // ---------- pages ----------
   const chap = (n) => C.chapters.find((c) => c.n === n);
   const nextLine = () => (C.next ? (C.next.date ? `Chapter ${WORDS[C.next.n]} arrives ${C.next.date}.` : `Chapter ${WORDS[C.next.n]} is on its way.`) : "");
-  const foot = () => `<footer class="foot"><div class="foot-in"><p>© ${new Date().getFullYear()} ${esc(C.author)}. All rights reserved.</p>
+  const foot = () => `<footer class="foot"><div class="foot-in"><p>© ${C.year || new Date().getFullYear()} ${esc(C.author)}. All rights reserved.</p>
       <p>Divyarann is a work of fiction. This is the draft web edition of Book One: chapters may be revised, and this edition may be withdrawn when the book is published. Please share the link rather than reposting chapters elsewhere.</p>
       <p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
   const follow = () => {
@@ -129,7 +129,7 @@
           <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="kicker"><span>Next</span></span><span class="fine">${esc(nextLine())}</span>`}
             ${prev ? `<a class="ch-prev" href="/read/${n - 1}/">← ${esc(prev.title)}</a>` : ""}</div>
         </footer>
-      </article>`;
+      </article>${foot()}`;
   }
 
   function codex() {
@@ -175,7 +175,9 @@
     return `<section class="page-head"><p class="kicker"><span>About</span></p><h1 class="page-title">Divyarann</h1></section>
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
       <h2>The author</h2><p>Written by <a href="/author/">${esc(C.author)}</a>. Write to hello@divyarann.com.</p>
-      <h2>Privacy</h2><p>Your reading progress stays on your device. The site sets no advertising or tracking cookies.</p></section>${foot()}`;
+      <h2>Privacy</h2><p>Your reading progress, bookmarks and settings (text size, colours, sound) are kept in your browser's local storage on this device. Nothing about your reading is sent anywhere, and the site sets no advertising or tracking cookies and runs no analytics.</p>
+      <p>If you join the email list, your address is held by Kit (kit.com), the mail service that sends each new chapter. Every email has a one-click unsubscribe.</p>
+      <p>The site is hosted on GitHub Pages. Its fonts come from Google Fonts and some of its code from the cdnjs and jsDelivr networks, which, like any web host, see your IP address when your browser fetches them.</p></section>${foot()}`;
   }
 
   // a static wheel for devices without WebGL
@@ -678,8 +680,8 @@
   function toast(m, ms) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), ms || 2600); }
   window.DVToast = toast;
   const menuBtn = $("#menuBtn");
-  function closeMenu() { root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); $("#menu").setAttribute("aria-hidden", "true"); if (lenis) lenis.start(); }
-  menuBtn.addEventListener("click", () => { const open = !root.classList.contains("menu-open"); root.classList.toggle("menu-open", open); menuBtn.setAttribute("aria-expanded", String(open)); $("#menu").setAttribute("aria-hidden", String(!open)); sound.tick(); if (lenis) open ? lenis.stop() : lenis.start(); if (window.DVGL) window.DVGL.menu(open); });
+  function closeMenu() { root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); $("#menu").setAttribute("aria-hidden", "true"); $("#menu").inert = true; if (lenis) lenis.start(); }
+  menuBtn.addEventListener("click", () => { const open = !root.classList.contains("menu-open"); root.classList.toggle("menu-open", open); menuBtn.setAttribute("aria-expanded", String(open)); $("#menu").setAttribute("aria-hidden", String(!open)); $("#menu").inert = !open; sound.tick(); if (lenis) open ? lenis.stop() : lenis.start(); if (window.DVGL) window.DVGL.menu(open); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
   document.querySelectorAll(".pal button").forEach((b) => b.addEventListener("click", () => {
     const p = b.dataset.p; if ((root.getAttribute("data-palette") || "akash") === p) return;

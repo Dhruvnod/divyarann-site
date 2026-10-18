@@ -231,6 +231,7 @@ function inlayTag(geo, kind, idx) {
 function boot() {
   const canvas = document.getElementById("gl");
   if (!canvas) return;
+  canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); root.classList.add("no-webgl"); });
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "high-performance" });
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
   const glc = renderer.getContext(), dbgExt = glc.getExtension("WEBGL_debug_renderer_info"), gpuName = dbgExt ? String(glc.getParameter(dbgExt.UNMASKED_RENDERER_WEBGL)) : "";
@@ -250,7 +251,7 @@ function boot() {
   const LVS = [[0.16, 0.35, 2, 4, 2, 0], [0.22, 0.55, 3, 3, 3, 0], [0.3, 0.75, 3, 2, 4, MSOK ? 2 : 0], [TIER.bloom, 1, TIER.oct, 2, 5, MSOK ? 4 : 0]].map(([bloom, parts, oct, neb, det, msaa], i) =>
     ({ bloom: Math.min(bloom, TIER.bloom), parts, oct: Math.min(oct, TIER.oct), neb, det, msaa: msaaOk ? (MSAAQ ? +MSAAQ[1] : msaa) : 0, q: strong ? (i ? 1 : 0.86) : [0.72, 0.86, 1, 1][i] }));
   let LV = software ? 0 : strong ? 3 : WEAK ? 1 : 2;
-  const LVQ = /[?&]lv=([0-3])/.exec(location.search), BENCH = /[?&]bench=1/.test(location.search); if (LVQ) LV = +LVQ[1];
+  const LVQ = /[?&]lv=([0-3])/.exec(location.search), BENCH = /[?&]bench=1/.test(location.search) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname); if (LVQ) LV = +LVQ[1];
   let Q = strong ? 1 : Math.min(LVS[LV].q, Math.sqrt(TIER.px / fullPx()));
   const QMIN = strong ? 0.86 : software ? 0.4 : 0.6;
   const PERF = window.DVPerf = { fps: 60, q: Q, lv: LV, gpu: gpuName, software, strong, late: 0, calm: false, w: 0, h: 0 };
