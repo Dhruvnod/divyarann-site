@@ -271,7 +271,7 @@
 
   // ---------- routing ----------
   const ROUTES = [
-    [/^(home)?$/, () => ["home", home()]], [/^chapters$/, () => ["contents", contents()]], [/^ch-(\d+)$/, (m) => ["reader", reader(+m[1]), +m[1]]],
+    [/^(home)?$/, () => ["home", home()]], [/^chapters$/, () => ["contents", contents()]], [/^ch-(\d+)$/, (m) => (chap(+m[1]) ? ["reader", reader(+m[1]), +m[1]] : ["notfound", +m[1] > C.released && +m[1] <= 26 ? unreleased(+m[1]) : notFound()])],
     [/^codex$/, () => ["codex", codex()]], [/^story$/, () => ["story", story()]],
     [/^tears$/, () => ["tears", sealedPage("Atlas", "The Seven Tears", "The sky has not opened yet. This atlas fills in as the story reaches the tears.")]],
     [/^powers$/, () => ["powers", sealedPage("Reference", "Powers", "One energy, latent in everyone, answering what a person is actually resolved to do. Nobody has awakened yet.")]],
@@ -283,6 +283,7 @@
     [/^notfound$/, () => ["notfound", notFound()]],
   ];
   function mailPage(kick, title, line, ctas) { return `<section class="page-head sealed-page"><p class="kicker"><span>${kick}</span></p><h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><div class="cta-row">${ctas}</div></section>${foot()}`; }
+  function unreleased(n) { return `<section class="page-head sealed-page"><p class="kicker"><span>Chapter ${WORDS[n] || n}</span></p><h1 class="page-title">Not out yet</h1><p class="page-lede">${esc(nextLine() || "This chapter has not been released.")}</p><div class="cta-row"><a class="cta" href="/read/">All chapters</a></div></section>${foot()}`; }
   function notFound() { return `<section class="page-head sealed-page"><p class="kicker"><span>Not found</span></p><h1 class="page-title">This page is not in the book</h1><p class="page-lede">The link may be old, or the page may not have opened yet.</p><div class="cta-row"><a class="cta" href="/">Back to the threshold</a><a class="cta ghost" href="/read/">All chapters</a></div></section>${foot()}`; }
   const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann", author: "About the author · Divyarann", disclaimer: "Disclaimer · Divyarann" };
   let current = null, navId = 0, ctx = null, landing = false;
@@ -307,7 +308,7 @@
     const [name, html, n] = resolve();
     if (!first) { window.DVGL && window.DVGL.leave(name); await closeTear(); if (id !== navId) return; }
     if (ctx) ctx.revert();
-    thread.clear();
+    thread.clear(); { const p = $("#pop"); if (p) p.classList.remove("show"); }
     view.innerHTML = html; view.dataset.page = name;
     root.classList.toggle("on-reader", name === "reader");
     document.querySelectorAll(".menu a[data-route]").forEach((a) => a.classList.toggle("is-on", a.dataset.route === name || (name === "reader" && a.dataset.route === "contents")));
@@ -525,7 +526,8 @@
     if (on) tlNotch.style.transform = `translate(${px(pm).toFixed(1)}px, ${(b.top + pm * b.height).toFixed(1)}px)`;
   }
   window.addEventListener("resize", () => { if (typeof readerScroll === "function") readerScroll(); });
-  let readerScroll = null;
+  let readerScroll = null, popY = 0;
+  window.addEventListener("scroll", () => { const p = $("#pop"); if (p && p.classList.contains("show") && Math.abs(window.scrollY - popY) > 40) p.classList.remove("show"); }, { passive: true });
 
   // ---------- the bookmark: one word in each chapter. Held for a moment on a phone, or double-clicked on a computer, it lights
   //            (violet in Akash, a reddish gold in Grahan); the chapter reopens at it, and the same gesture puts it out ----------
@@ -665,8 +667,7 @@
     // word help
     const pop = $("#pop"), gl = Object.fromEntries(C.glossary.map((g) => [g.id, g]));
     prose.addEventListener("click", (e) => { const w = e.target.closest(".w"); if (!w) { pop.classList.remove("show"); return; } const g = gl[w.dataset.g]; if (!g) return; const r = w.getBoundingClientRect();
-      pop.innerHTML = `<b>${esc(g.term)}</b>${esc(g.def)}`; pop.style.left = Math.min(window.innerWidth - 316, Math.max(12, r.left)) + "px"; pop.style.top = (r.bottom + 10) + "px"; pop.classList.add("show"); sound.tick(); });
-    window.addEventListener("scroll", () => pop.classList.remove("show"), { passive: true, once: true });
+      pop.innerHTML = `<b>${esc(g.term)}</b>${esc(g.def)}`; pop.style.left = Math.min(window.innerWidth - 316, Math.max(12, r.left)) + "px"; pop.style.top = (r.bottom + 10) + "px"; pop.classList.add("show"); popY = window.scrollY; sound.tick(); });
   }
   function ritual(n) { sound.light(); toast(`Chapter ${WORDS[n]} · a point is lit`); if (window.DVGL) window.DVGL.light(n); }
   let rs = 20; try { rs = +localStorage.getItem("divyarann-size") || 20; } catch (e) {} root.style.setProperty("--rs", rs + "px");

@@ -755,7 +755,7 @@ function boot() {
     // w, h: the visible window, where the wheel is placed; canH: the canvas, which the scene is drawn for
     const w = canW, h = window.innerHeight || canH, s = SCENES[state] || SCENES.about, ar = s.anchor ? anchorRect() : null;
     let tx, ty, tr;
-    if (ar) { tx = ar.left + ar.width / 2; ty = ar.top + ar.height / 2; tr = ar.width / 2; }
+    if (ar) { tx = ar.left + ar.width / 2; ty = ar.top + ar.height / 2; tr = ar.width / 2; if (w < 700) tr = Math.min(tr, (w / 2 - 6) / (1.27 * D.fit)); }   // phones: the petals stay on screen
     else if (s.px) { [tx, ty, tr] = s.px(w, h); }
     else if (w < 700 && !UNDOCKED.has(state)) { const vis = Math.min(w * 0.17, 76); tr = vis / (1.38 * D.fit); tx = w - vis - 14; ty = h - vis - 22; }   // phones: small, in the corner, out of the way (sized by the light round it, which reaches 1.38 of the shield)
     else { tx = s.x * w; ty = s.y * h; tr = s.r * h; if (w < 900 && (state === "contents" || state === "home:index" || state === "story" || state === "about")) { tx = w * 1.02; tr = Math.min(tr, w * 0.55); }
