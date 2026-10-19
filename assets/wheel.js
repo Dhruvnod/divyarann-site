@@ -177,8 +177,8 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     "#wheelpr .pbox{position:absolute;display:block}",
     ".pr-mk{position:absolute;left:0;top:0;opacity:0;transition:opacity .3s;mix-blend-mode:" + BL + "}",
     ".pr-mk canvas{display:block;width:100%;height:100%}",
-    ".rv-clip{position:absolute;top:0;width:160px;height:320px;overflow:hidden}.rv-r{left:160px}.rv-l{left:0}",
-    ".rv-cov{position:absolute;top:0;width:320px;height:320px;will-change:transform}.rv-r .rv-cov{left:-160px}.rv-l .rv-cov{left:0}",
+    "#wheelpr .rv-disc{position:absolute;left:10px;top:10px;width:300px;height:300px;border-radius:50%;background-color:var(--pbg);transition:background-color 1.2s cubic-bezier(.16,1,.3,1)}",
+    "#wheelpr .rv-edge{position:absolute;left:0;top:0;width:320px;height:320px;opacity:0;will-change:transform,opacity}",
     "#wheelpr .tear{position:absolute;left:0;top:0;opacity:0;will-change:transform,opacity;mix-blend-mode:" + BL + "}",
     "#wheelpr .tear canvas{width:100%;height:100%;display:block}",
     "#wheelpr .ecl{position:absolute;left:0;top:0;border-radius:50%;opacity:0;background-color:var(--pbg);-webkit-mask-image:radial-gradient(closest-side,#000 78%,transparent);mask-image:radial-gradient(closest-side,#000 78%,transparent);will-change:transform}",
@@ -217,7 +217,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   var VW = innerWidth, VH = innerHeight;   // the host's own size (the canvas of the live page is 100lvh: on a phone taller than the window while the bars show)
   var host, wheelEl, shieldEl, truthBox = {}, ptsEl, revEl, tearEl, eclEl, vigEl, hintEl, anchors = {};
   var layerEls = {};            // id -> { size index: canvas } (aura: { a: canvas })
-  var mk = {}, coverEls = [];
+  var mk = {}, revDisc = null, revEdge = null;
 
   function buildDOM() {
     var st = document.createElement("style"); st.id = "pr-css"; st.textContent = STYLE.join("\n"); document.head.appendChild(st);
@@ -237,7 +237,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     ptsEl = el("div", "pbox", wheelEl); ptsEl.style.cssText += ";left:-150px;top:-150px;width:300px;height:300px";
     ["hover", "flare"].forEach(function (n) { var m = mk[n] = el("div", "pr-mk", ptsEl), z = n === "flare" ? 60 : 24; m.style.width = m.style.height = z + "px"; m.style.margin = (-z / 2) + "px 0 0 " + (-z / 2) + "px"; m.style.left = m.style.top = "150px"; });
     revEl = el("div", "pbox", wheelEl); revEl.style.cssText += ";left:-160px;top:-160px;width:320px;height:320px";
-    ["r", "l"].forEach(function (s) { var cl = el("div", "rv-clip rv-" + s, revEl); coverEls.push(el("canvas", "rv-cov", cl)); });
+    revDisc = el("div", "rv-disc", revEl); revEdge = el("canvas", "rv-edge", revEl);
     tearEl = el("div", "tear", host);   // over the wheel (and its opaque backdrop), screened onto it
     eclEl = el("div", "ecl", host);
     vigEl = el("div", "vig", host);
@@ -496,13 +496,21 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     });
     return out;
   }
-  // the half-disc that wipes the wheel in: opaque (the colour of the page's ground), a soft leading edge, a hairline of light on the edge. It turns clockwise from the top
+  // the wipe that draws the wheel in: one disc of the page's ground over the wheel (radius 1.5), see-through behind an edge that turns clockwise from the top, with a
+  // 16-degree feather and a hairline of light riding the edge (its own canvas, below). It used to be two half-discs turning in two clips; each, with its feather, was
+  // 196 degrees wide, so at the end of its turn its far end came back round into its own half: two dark wedges, at the top and at the bottom, before the end.
   var FE = 16;   // the feather on the edge, in degrees
-  function makeCover(pal) {
-    var P = 512, c = document.createElement("canvas"); c.width = c.height = P; var x = c.getContext("2d"), u = P / 3.2, R = 1.5, fe = FE * PI / 180, ink = pal === "grahan" ? [3, 1, 1] : [1, 0, 5], L = LIGHT[pal];
+  var CONIC = !!(window.CSS && CSS.supports && (CSS.supports("mask-image", "conic-gradient(#000, #000)") || CSS.supports("-webkit-mask-image", "conic-gradient(#000, #000)")));
+  function revMask(A) {   // the disc's mask with the edge at A degrees clockwise from the top (-FE to 360): see-through before the edge, eased to opaque over the feather
+    var R = [[A, 0], [A + FE / 2, Math.pow(0.5, 1.3)], [A + FE, 1]];
+    var at = function (g) { if (g <= A) return 0; if (g >= A + FE) return 1; var i = g < R[1][0] ? 0 : 1; return R[i][1] + (R[i + 1][1] - R[i][1]) * (g - R[i][0]) / (R[i + 1][0] - R[i][0]); };
+    var gs = [0, 360]; R.forEach(function (r) { if (r[0] > 0 && r[0] < 360) gs.push(r[0]); }); if (A > 0 && A < 360) gs.push(A);
+    gs.sort(function (a, b) { return a - b; });
+    return "conic-gradient(" + gs.map(function (g, i) { var v = (g === 0 && A > 0) || (i === 0 && A >= 360) ? 0 : at(g); return "rgba(0,0,0," + v.toFixed(3) + ") " + g.toFixed(2) + "deg"; }).join(", ") + ")";
+  }
+  function makeEdge(pal) {
+    var P = 512, c = document.createElement("canvas"); c.width = c.height = P; var x = c.getContext("2d"), u = P / 3.2, L = LIGHT[pal];
     x.setTransform(u, 0, 0, u, P / 2, P / 2);
-    x.fillStyle = rgba(ink, 1); x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, R, -PI / 2 + fe, PI / 2 + fe); x.closePath(); x.fill();
-    var n = 32; for (var i = 0; i < n; i++) { var a0 = -PI / 2 + fe * i / n, a1 = -PI / 2 + fe * (i + 1) / n; x.fillStyle = rgba(ink, Math.pow((i + 0.5) / n, 1.3)); x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, R, a0, a1 + 0.004); x.closePath(); x.fill(); }
     x.lineCap = "round";
     for (var k = 0; k < 10; k++) {   // the hairline and a short soft trail behind it, on the side already drawn; brightest where the ring is
       var a = -PI / 2 - k * 0.0065, ca = Math.cos(a), sa = Math.sin(a), amp = k === 0 ? 0.95 : 0.45 * Math.pow(1 - k / 10, 2);
@@ -518,8 +526,8 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     paintCovers(pal);
     installTear(pal);
   }
-  // the wipe's covers are painted at boot, before any size is in: the wheel must not show in the moment between its layers arriving and the intro starting
-  function paintCovers(pal) { var cov = makeCover(pal); coverEls.forEach(function (c) { c.width = c.height = cov.width; c.getContext("2d").drawImage(cov, 0, 0); }); }
+  // the wipe's disc is opaque from the start (plain CSS, the ground's colour): the wheel does not show in the moment between its layers arriving and the intro starting
+  function paintCovers(pal) { var e = makeEdge(pal); revEdge.width = revEdge.height = e.width; revEdge.getContext("2d").drawImage(e, 0, 0); }
   // the crack of the Tears page: 11 KB, but 5 MB of pixels once decoded, so it is fetched when the page that shows it is asked for (and its file warmed in the cache when the menu opens)
   function installTear(pal) { var t = TEAR[pal]; if (!t) return; var old2 = tearEl.firstChild; if (old2) tearEl.removeChild(old2); tearEl.appendChild(t.cv); sizeTear(); }
   var tearP = {}, tearWarm = {};
@@ -690,10 +698,13 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     var d = S.draw, on = d < 0.999;
     if (last.rv !== on) { last.rv = on; revEl.style.display = on ? "" : "none"; }
     if (!on) return;
-    var span = 180 + FE, pr = clamp(d / 0.5, 0, 1), pl = clamp((d - 0.5) / 0.5, 0, 1);
-    var a = "rotate(" + (-FE + span * pr).toFixed(2) + "deg)", b = "rotate(" + (180 - FE + span * pl).toFixed(2) + "deg)";
-    if (last.rvr !== a) { last.rvr = a; coverEls[0].style.transform = a; }
-    if (last.rvl !== b) { last.rvl = b; coverEls[1].style.transform = b; }
+    if (!CONIC) { var fo = (1 - sstep(0, 1, d)).toFixed(3); if (last.rvd !== fo) { last.rvd = fo; revDisc.style.opacity = fo; } return; }
+    var A = -FE + (360 + FE) * d, m = revMask(A), dop = (A > 360 - FE ? clamp((360 - A) / FE, 0, 1) : 1).toFixed(3);   // the last sliver fades as it closes at the top
+    var et = "rotate(" + A.toFixed(2) + "deg)", eo = (sstep(0, 6, A) * sstep(360, 350, A)).toFixed(3);
+    if (last.rvm !== m) { last.rvm = m; revDisc.style.webkitMaskImage = m; revDisc.style.maskImage = m; }
+    if (last.rvd !== dop) { last.rvd = dop; revDisc.style.opacity = dop; }
+    if (last.rvt !== et) { last.rvt = et; revEdge.style.transform = et; }
+    if (last.rve !== eo) { last.rve = eo; revEdge.style.opacity = eo; }
   }
   var wipeEnd = 0, openT = 0, openEarly = false;   // when the threshold's wipe ends; the page's scene, waiting for it; open() came before the wipe began
   function runIntro(returning) {
