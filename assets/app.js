@@ -816,10 +816,12 @@
     $("#introLabel").textContent = "of 18 lit";
     if (window.DVGL) window.DVGL.intro(returning);
     if (!gs || reduced()) { $("#introNum").textContent = pad(n); if (returning) setTimeout(() => enter(false), 300); else hold.classList.add("ready"); return; }
-    const num = { v: 0 };
+    // the count keeps its element: a reader who enters before it has finished removes the threshold, and looking the element up again then threw on every frame
+    // until the count ended, which stopped every later ticker listener (the wheel's wipe stood still for a third of a second)
+    const num = { v: 0 }, numEl = $("#introNum");
     const tl = gs.timeline();
     tl.to(iPath, { strokeDashoffset: 0, duration: returning ? 0.7 : 1.6, ease: "power2.inOut" }, returning ? 0 : 0.3)
-      .to(num, { v: n, duration: returning ? 0.6 : 1.8, ease: "power2.out", onUpdate: () => { $("#introNum").textContent = pad(Math.round(num.v)); } }, returning ? 0.1 : 0.8);
+      .to(num, { v: n, duration: returning ? 0.6 : 1.8, ease: "power2.out", onUpdate: () => { numEl.textContent = pad(Math.round(num.v)); } }, returning ? 0.1 : 0.8);
     if (returning) tl.add(() => enter(false), 1.3);
     else tl.add(() => hold.classList.add("ready"), 3.2);
   }

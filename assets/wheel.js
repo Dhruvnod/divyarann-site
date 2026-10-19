@@ -153,7 +153,8 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   function calmWhy(bit, on) {
     var was = calmBits; calmBits = on ? (calmBits | bit) : (calmBits & ~bit);
     if (!!was === !!calmBits) return;
-    if (calmBits) { document.getAnimations().forEach(function (a) { var t = a.effect && a.effect.getComputedTiming && a.effect.getComputedTiming(); if (a.playState === "running" && t && t.iterations === Infinity) { try { a.pause(); calmPaused.push(a); } catch (e) {} } }); }
+    // (not the wheel's own turns: they are the compositor's and cost the main thread nothing, and pausing them here stopped the wheel on a slow device after every page change)
+    if (calmBits) { document.getAnimations().forEach(function (a) { if (a._el) return; var t = a.effect && a.effect.getComputedTiming && a.effect.getComputedTiming(); if (a.playState === "running" && t && t.iterations === Infinity) { try { a.pause(); calmPaused.push(a); } catch (e) {} } }); }
     else { calmPaused.forEach(function (a) { try { a.play(); } catch (e) {} }); calmPaused.length = 0; }
   }
 
@@ -624,7 +625,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   }
   function placeOpacity() {
     var rg = clamp(S.rings, 0, 1), F = DBGF, pt = rg > 0.004 ? clamp(S.pts, 0, 1) : 0;
-    var os = F ? F.s : tab(RTAB.s, rg), oh = (F ? F.h : tab(RTAB.h, rg)) * breath, oa = F ? F.a : clamp(S.glow / 0.75, 0, 1.3) * Math.pow(rg, POW_A), od = F ? F.d : Math.pow(pt, POW_D), f = { h: oh, a: oa, d: od };
+    var os = F ? F.s : tab(RTAB.s, rg), oh = (F ? F.h : tab(RTAB.h, rg)) * breath, oa = F ? F.a : clamp(S.glow / 0.75, 0, 1.3) * Math.pow(rg, POW_A) * (S.draw < 1 ? sstep(0.9, 1, S.draw) : 1), od = F ? F.d : Math.pow(pt, POW_D), f = { h: oh, a: oa, d: od };
     var sv = os.toFixed(3); if (sv !== last.os) { last.os = sv; shieldEl.style.opacity = sv; }
     var ov = (1 - 0.7 * sstep(170, 70, S.r)).toFixed(3); if (ov !== last.ov) { last.ov = ov; vigEl.style.opacity = ov; }   // the live film pass eases its vignette off as the wheel shrinks into the corner (dockVig 0.3)
     for (var j = 0; j < REG.length; j++) {
@@ -694,13 +695,18 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     if (last.rvr !== a) { last.rvr = a; coverEls[0].style.transform = a; }
     if (last.rvl !== b) { last.rvl = b; coverEls[1].style.transform = b; }
   }
+  var wipeEnd = 0, openT = 0, openEarly = false;   // when the threshold's wipe ends; the page's scene, waiting for it; open() came before the wipe began
   function runIntro(returning) {
     var dur = returning ? 1.0 : 2.8, delay = returning ? 0.1 : 0.6;
     S.draw = 0; S.rise = 1; updateReveal();
     tw(S, "rise", 0, dur + 0.4, delay, easeO);
     tw(S, "draw", 1, dur, delay, easeIO);
     S.glow = 0; tw(S, "glow", SC.intro.neb, returning ? 0.9 : 1.6, delay + dur * 0.96);   // the aura comes up once the wipe is done: the cover would otherwise leave a dark wedge in it
+    wipeEnd = now() + (delay + dur) * 1000;
+    if (openEarly) { openEarly = false; sceneAfterWipe(); }
   }
+  function wiping() { return wipeEnd - now() > 50; }
+  function sceneAfterWipe() { clearTimeout(openT); openT = setTimeout(function () { openT = 0; goState(pageState()); }, Math.max(0, wipeEnd - now())); }
 
   // ---------- the flare, hover and clicks on the wheel (as before: hover names a chapter, a sealed truth says why it is shut) ----------
   var spin = { a: 0, b: 0 };   // the turns as the pacemaker last wrote them, in degrees (clockwise, the other way)
@@ -859,12 +865,20 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
       S.draw = 0; S.glow = 0; S.rise = 1; updateReveal(); apply();
       if (lodsReady()) runIntro(returning); else introPending = { returning: returning };
     },
-    open: function () { introPending = null; tw(S, "draw", 1, 0.4); tw(S, "rise", 0, 0.6); goState(pageState()); measureSoon(); },
+    // the threshold is over, and the page's scene follows. The wheel's own wipe starts only once its pictures are in, so it may still be running, or not have begun:
+    // it then finishes at its own pace (the short one, if it had not begun) and the scene follows it. (Restarting it here stalled it for a few frames, and the aura,
+    // brought up at once, showed the wipe's opaque cover as a dark wedge in it.)
+    open: function () {
+      measureSoon();
+      if (introPending) { introPending.returning = true; openEarly = true; return; }
+      if (wiping()) { sceneAfterWipe(); return; }
+      tw(S, "draw", 1, 0.4); tw(S, "rise", 0, 0.6); goState(pageState());
+    },
     enter: function (name, opts) {
       onProgress(); page = name; if (calmBits) setTimeout(function () { var b = calmBits; calmBits = 0; calmWhy(b, true); }, 500);
       if (root.classList.contains("is-intro") && opts && opts.first) return;     // the threshold is showing; open() follows it
-      goState(pageState(), opts && opts.first);
-      if (S.draw < 1) tw(S, "draw", 1, 1.0, 0.2);
+      clearTimeout(openT); openT = 0; goState(pageState(), opts && opts.first);
+      if (S.draw < 1 && !wiping()) tw(S, "draw", 1, 1.0, 0.2);
       if (name === "home") measureSoon();
     },
     leave: function () {},
