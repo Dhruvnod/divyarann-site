@@ -3,6 +3,7 @@
    for what is sealed. Display: Fraunces, light and large. Reading: Newsreader. Labels: IBM Plex Mono.
    Motion tokens: micro .25s, hover .45s, reveal .8s, transition 1.2s, eased out; nothing bounces. */
 :root {
+  --ground: #010005;   /* the page's own background: the wheel's ground (wheel_prerender.js --pbg), so nothing changes when the wheel's layer arrives over the first paint */
   --ink: #07060b; --ink-2: #0e0c15; --bone: #e9e3d8; --bone-2: #c9c2b7; --muted: #8b8593; --line: rgba(233, 227, 216, 0.12); --line-2: rgba(233, 227, 216, 0.24);
   --accent: #b9a8ff; --seal: #c2384b;
   --f-display: "Fraunces", "Iowan Old Style", Georgia, serif; --f-body: "Newsreader", "Iowan Old Style", Georgia, serif;
@@ -11,9 +12,9 @@
   --gutter: clamp(16px, 4vw, 56px); --rs: 20px;
   color-scheme: dark;
 }
-:root[data-palette="grahan"] { --ink: #0a0606; --ink-2: #150c0c; --bone: #ede2d2; --bone-2: #d2c4b2; --muted: #9a8c82; --line: rgba(237, 226, 210, 0.12); --line-2: rgba(237, 226, 210, 0.24); --accent: #c9a25a; --seal: #d2453a; }
+:root[data-palette="grahan"] { --ground: #030101; --ink: #0a0606; --ink-2: #150c0c; --bone: #ede2d2; --bone-2: #d2c4b2; --muted: #9a8c82; --line: rgba(237, 226, 210, 0.12); --line-2: rgba(237, 226, 210, 0.24); --accent: #c9a25a; --seal: #d2453a; }
 *, *::before, *::after { box-sizing: border-box; }
-html, body { background: var(--ink); color: var(--bone); transition: background-color 1.2s var(--ease), color 1.2s var(--ease); }
+html, body { background: var(--ground); color: var(--bone); transition: background-color 1.2s var(--ease), color 1.2s var(--ease); }
 body { margin: 0; font-family: var(--f-body); font-size: 20px; line-height: 1.65; -webkit-font-smoothing: antialiased; overflow-x: clip; text-rendering: optimizeLegibility; }
 html.lenis, html.lenis body { height: auto; }
 .lenis:not(.lenis-autoToggle).lenis-stopped { overflow: clip; }
