@@ -8,6 +8,39 @@
   const view = document.getElementById("view");
   const gs = window.gsap || null, ST = window.ScrollTrigger || null;
   const reduceMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  // ---------- PERF 1: how heavy this device is, and when the page rests ----------
+  // Traces of the page alone (no wheel) on a 144 Hz laptop showed where the main thread goes, and almost none of it was script. (a) Two frame loops never stop:
+  // GSAP's ticker and ScrollTrigger's own "rAF bug fix" ask for a frame at every vsync for ever, and while any frame loop runs every animation costs a style
+  // recalc, a paint and a commit per frame (the scroll cue and the next chapter's ring alone were 4 to 8% of the thread at rest). (b) Every scroll listener read
+  // layout (scrollY, getBoundingClientRect) after another had written, and Lenis's scrollTo ran after GSAP had written, so each frame recalculated style two or
+  // three times. (c) The thread pulse read layout on every frame. (d) The reading line repainted a drop-shadow filter on every scroll event.
+  // The fixes are marked PERF 1 to 6: 1 device class and rest, 2 one ordered frame, 3 the ticker and ScrollTrigger's loop sleep at rest, 4 the endless CSS loops,
+  // 5 the thread pulse, 6 the reading line. They do not depend on the wheel.
+  const CORES = navigator.hardwareConcurrency || 8, COARSE = window.matchMedia("(pointer: coarse)").matches;
+  const CPU = (() => { const run = () => { const t = performance.now(); let x = 0; for (let i = 0; i < 400000; i++) x += Math.sqrt(i) * 1.0001 + (i & 7); return performance.now() - t + (x < 0 ? 1 : 0); }; const r = [run(), run(), run(), run(), run()].slice(1); return Math.min(...r) / 0.5; })();   // the fastest of four runs (noise only slows): about 1 on a fast laptop, 5 under 4x throttling
+  // Only a measurably slow CPU counts as weak here (this laptop reads 1 to 2, under 4x throttling 3.4 to 7): the wheel's governor then starts a step down. The prototype's
+  // visible changes for phones and small CPUs (native scrolling instead of Lenis, no reveal tweens, a 30 fps ticker, the title rising as one piece, html.dv-weak) are
+  // not switched on: they wait for the author's decision.
+  const WEAK = CPU > 3;
+  window.DVCPU = { cpu: +CPU.toFixed(1), cores: CORES, coarse: COARSE, weak: WEAK };
+  const plain = () => reduced();
+  const FPSQ = /[?&]fps=(\d+)/.exec(location.search), PAGE_FPS = FPSQ ? +FPSQ[1] : 60;   // the ticker never asks for more frames than this
+  // the page rests a few seconds after the last input: endless decorative loops pause (CSS, html.dv-rest), the thread pulse waits, the ticker sleeps
+  let sleepFrame = -1;   // the ticker's frame count when the page put it to sleep: if it has moved, GSAP woke itself (a tween was made)
+  const rest = (() => {
+    let last = performance.now(), on = false;
+    const set = (v) => { if (v === on) return; on = v; root.classList.toggle("dv-rest", v); if (v) setTimeout(trySleep, 400); };
+    const touch = () => { last = performance.now(); if (on) { set(false); if (window.DVAsleep) { window.DVAsleep = false; gs.ticker.wake(); } if (api.onWake) api.onWake(); } };
+    ["pointermove", "pointerdown", "keydown", "wheel", "touchstart", "scroll", "resize", "hashchange", "popstate", "focus", "online"].forEach((t) => window.addEventListener(t, touch, { passive: true }));
+    document.addEventListener("visibilitychange", touch);
+    setInterval(() => {
+      if (!on && performance.now() - last > 5000) set(true);
+      if (on && gs) { if (window.DVAsleep && gs.ticker.frame !== sleepFrame) window.DVAsleep = false; if (!window.DVAsleep) trySleep(); }   // asleep again once whatever woke it is done
+    }, 1000);
+    const api = { get on() { return on; }, touch, onWake: null };
+    return api;
+  })();
   const reduced = () => reduceMQ.matches || root.classList.contains("dv-still");
   const WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty", "Twenty-one", "Twenty-two", "Twenty-three", "Twenty-four", "Twenty-five", "Twenty-six"];
   const DEVA = (n) => String(n).replace(/\d/g, (d) => "०१२३४५६७८९"[d]);
@@ -264,12 +297,36 @@
   }
   if (gs) { gs.set(halves[0], { xPercent: -101 }); gs.set(halves[1], { xPercent: 101 }); }
 
-  // ---------- smooth scroll ----------
-  let lenis = null;
+  // ---------- smooth scroll, and the frame (PERF 2) ----------
+  // Lenis runs first in every frame, while style is still clean, and the page's scroll-linked work follows in one hook that reads first and writes after. Before,
+  // GSAP rendered its tweens (writes), then Lenis's scrollTo and ScrollTrigger read scroll (a forced style recalc each), then three scroll listeners read and wrote
+  // again. No Lenis at all on a weak device: native scrolling costs the main thread nothing.
+  let lenis = null, curY = 0;
+  const frameHooks = new Set();   // functions (y), run once per frame after the scroll position changed
+  let scrollDirty = true, frameRaf = 0;
+  function frame() { if (!scrollDirty) return; scrollDirty = false; curY = lenis ? lenis.scroll : window.scrollY; frameHooks.forEach((f) => f(curY)); }
+  window.DVScroll = () => curY;   // the scroll position as of this frame, for the wheel: reading scrollY after writes forces a style recalc
+  window.addEventListener("scroll", () => { scrollDirty = true; if (!gs && !frameRaf) frameRaf = requestAnimationFrame(() => { frameRaf = 0; frame(); }); }, { passive: true });
+  // ScrollTrigger keeps a requestAnimationFrame loop of its own running for ever (its "rAF bug fix", for Safari's momentum scrolling): a frame at every vsync
+  // whatever the page does, which also makes every running animation cost a main-thread frame per vsync. It now runs while the page is in use (any input, any
+  // scrolling, including momentum) and is parked while the page rests. The callback is recognised by name; if a newer ScrollTrigger renames it, nothing changes.
+  const rawRAF = window.requestAnimationFrame.bind(window); let bugFix = null, bugParked = false;
+  window.requestAnimationFrame = (cb) => { if (cb && cb.name === "_rafBugFix") { bugFix = cb; if (rest.on) { bugParked = true; return 0; } } return rawRAF(cb); };
+  rest.onWake = () => { if (bugParked && bugFix) { bugParked = false; rawRAF(bugFix); } };
   if (gs && ST) {
-    gs.registerPlugin(ST); ST.config({ ignoreMobileResize: true });
-    if (window.Lenis && !reduceMQ.matches) { lenis = new window.Lenis({ lerp: 0.1, anchors: false }); lenis.on("scroll", ST.update); gs.ticker.add((t) => lenis.raf(t * 1000)); gs.ticker.lagSmoothing(0); window.DVLenis = lenis; }
+    gs.registerPlugin(ST); ST.config({ ignoreMobileResize: true }); gs.ticker.lagSmoothing(0); gs.ticker.fps(PAGE_FPS);
+    if (window.Lenis && !reduceMQ.matches) { lenis = new window.Lenis({ lerp: 0.1, anchors: false }); lenis.on("scroll", ST.update); window.DVLenis = lenis; }
+    gs.ticker.add((t) => { if (lenis) lenis.raf(t * 1000); frame(); }, false, true);   // prioritised: before GSAP renders this frame's tweens
   }
+  // the ticker sleeps while the page rests and nothing is animating (PERF 3); it wakes on any input, and GSAP wakes it by itself when a tween is made
+  function trySleep() {
+    if (!gs || !rest.on || document.hidden || window.DVAsleep) return;
+    if (lenis && (lenis.isScrolling || Math.abs(lenis.velocity || 0) > 0.01)) return setTimeout(trySleep, 600);
+    if (window.DVGL && window.DVGL.busy && window.DVGL.busy()) return setTimeout(trySleep, 600);
+    if (gs.globalTimeline.getChildren(false, true, true).some((a) => !a.paused() && a.progress() < 1)) return setTimeout(trySleep, 600);
+    window.DVAsleep = true; sleepFrame = gs.ticker.frame; gs.ticker.sleep();
+  }
+  window.DVWake = () => { if (!window.DVAsleep) return; window.DVAsleep = false; gs.ticker.wake(); setTimeout(trySleep, 1500); };   // for the wheel, which can need a frame while the page rests
 
   // ---------- routing ----------
   const ROUTES = [
@@ -347,7 +404,7 @@
     const E = (n, a, p) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
     let on = false, pts = [], cum = [], litLen = 0, nodes = [], target = null, spark = null, tail = null, tailG = null, hubDot = null, clipRect = null, box = null;
     const BX = 150, BY = 190;   // where the spark sits inside its moving layer
-    let phase = "wait", u = 0, wait = 1.2, dur = 3, drawn = true, flash = 0, torn = null, drewFor = null;
+    let phase = "wait", u = 0, wait = 1.2, dur = 3, drawn = true, flash = 0, torn = null, drewFor = null, tornTop = 0, acc = 0;   // tornTop: the thread's top in the document, measured at build (PERF 5)
     const easeIO = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
     function crack(pins, R) {   // a hairline that wanders a few pixels either side of the straight line between pins, with small side cracks
       const out = [pins[0]], br = [];
@@ -369,6 +426,7 @@
     function build() {
       on = false; torn = $("#torn"); const svg = $("#thread"), sv2 = $("#threadPulse"); if (!torn || !svg || !sv2) return;
       const T = torn.getBoundingClientRect(), W = torn.clientWidth, H = Math.ceil(torn.scrollHeight); if (!H || !W) return;
+      tornTop = T.top + window.pageYOffset; curY = window.pageYOffset;
       const mobile = window.innerWidth < 900;
       nodes = [...torn.querySelectorAll(".ix-row")].map((row) => { const n = row.querySelector(".ix-node"), b = n.getBoundingClientRect(); return { el: n, x: b.left + b.width / 2 - T.left, y: b.top + b.height / 2 - T.top, read: row.classList.contains("is-read") }; });
       if (!nodes.length) return;
@@ -432,6 +490,8 @@
     }
     function tick(dt) {
       if (!on || !drawn || reduced() || document.hidden || !torn || !torn.isConnected) return;
+      if (rest.on) { if (phase === "run") { phase = "wait"; wait = 0.8; box.style.opacity = 0; } return; }   // PERF 5: the page is resting: the pulse waits
+      acc += dt; if (acc < 0.032) return; dt = acc; acc = 0;   // PERF 5: a slow glow does not need more than 30 frames a second
       const rak = root.getAttribute("data-rakta") === "on";
       if (flash > 0) { flash *= Math.pow(0.02, dt); if (flash < 0.004) flash = 0; hubDot.style.opacity = flash.toFixed(3); }
       if (phase === "wait") {
@@ -440,7 +500,7 @@
         phase = "run"; u = 0; dur = Math.min(4.4, Math.max(1.7, litLen / 330)); flash = 1; nodes.forEach((n) => { n.hit = false; });
       }
       u = Math.min(1, u + dt / dur); const s = litLen * easeIO(u), p = at(s);
-      const T = torn.getBoundingClientRect(), vy = T.top + p[1];
+      const vy = tornTop - curY + p[1];   // PERF 5: from the measured top and the frame's scroll position; it used to read layout on every frame
       nodes.forEach((n) => { if (!n.hit && n.read && n !== target && n.s <= s) { n.hit = true; n.el.classList.remove("ping"); void n.el.offsetWidth; n.el.classList.add("ping"); } });
       if (vy > -200 && vy < window.innerHeight + 200) {
         const a = Math.min(1, u * 8) * (u > 0.95 ? (1 - u) / 0.05 : 1), tl = Math.min(130, s), ox = p[0] - BX, oy = p[1] - BY;
@@ -466,24 +526,24 @@
       // reveals: section heads and rows rise in as they arrive
       let k = 0;
       view.querySelectorAll(".ix-row").forEach((row) => {
-        if (reduced()) return;
+        if (plain()) return;
         const st = { trigger: row, start: "top 94%", once: true };
         gs.from(row.querySelector(".ix-l"), { x: window.innerWidth < 900 ? 0 : -34, y: window.innerWidth < 900 ? 18 : 0, autoAlpha: 0, duration: 1.0, ease: "power3.out", scrollTrigger: st });
         gs.from(row.querySelector(".ix-r"), { x: window.innerWidth < 900 ? 0 : 34, y: window.innerWidth < 900 ? 18 : 0, autoAlpha: 0, duration: 1.0, ease: "power3.out", delay: 0.06, scrollTrigger: st });
         gs.from(row.querySelector(".ix-node"), { scale: 0.4, autoAlpha: 0, duration: 0.8, ease: "power3.out", scrollTrigger: st });
       });
       view.querySelectorAll(".sec-head h2, .page-title, .page-lede, .toc-row, .four-card, .card, .book, .sums li").forEach((el) => {
-        if (reduced()) return;
+        if (plain()) return;
         if (el.getBoundingClientRect().top < window.innerHeight) gs.from(el, { y: 40, autoAlpha: 0, duration: 1.0, ease: "power3.out", delay: 0.15 + 0.07 * k++ });
         else gs.from(el, { y: 40, autoAlpha: 0, duration: 1.0, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 96%", once: true } });
       });
       // the premise arrives one line at a time
       view.querySelectorAll("[data-lines]").forEach((p) => {
-        if (reduced()) return;
+        if (plain()) return;
         const words = p.textContent.split(" "); p.innerHTML = words.map((w) => `<span class="wd" style="display:inline-block">${esc(w)}</span>`).join(" ");
         gs.from(p.querySelectorAll(".wd"), { y: "0.6em", autoAlpha: 0, duration: 0.9, ease: "power3.out", stagger: 0.025, scrollTrigger: { trigger: p, start: "top 80%", once: true } });
       });
-      view.querySelectorAll("[data-beat]").forEach((b) => { if (!reduced()) gs.from(b, { autoAlpha: 0.08, y: 24, duration: 1, ease: "power2.out", scrollTrigger: { trigger: b, start: "top 70%", end: "top 30%", scrub: 0.6 } }); });
+      view.querySelectorAll("[data-beat]").forEach((b) => { if (!plain()) gs.from(b, { autoAlpha: 0.08, y: 24, duration: 1, ease: "power2.out", scrollTrigger: { trigger: b, start: "top 70%", end: "top 30%", scrub: 0.6 } }); });
       // the wheel moves with the home page's sections
       if (name === "home" && ST) view.querySelectorAll("[data-scene]").forEach((sec) => ST.create({ trigger: sec, start: "top 55%", end: "bottom 45%", onToggle: (self) => { if (self.isActive && window.DVGL) window.DVGL.sub(sec.dataset.scene); } }));
     }, view);
@@ -496,12 +556,20 @@
     if (name === "reader") mountReader(n);
     if (name === "home") { requestAnimationFrame(() => thread.build()); setTimeout(() => thread.build(), 1500); }
     if (name === "codex") { drawMap(); view.querySelectorAll(".dial button").forEach((b) => b.addEventListener("click", () => { DVR.setReached(+b.dataset.set); sound.light(); rerender(); })); }
+    armSafety(); watchAmbient();
   }
-  // the bar steps aside while reading downward and returns the moment the reader scrolls back up
+  // PERF 4: the page's endless decorative loops (the scroll cue, the next chapter's ring) only run while their element is on screen
+  const ambientIO = "IntersectionObserver" in window ? new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle("is-off", !e.isIntersecting))) : null;
+  function watchAmbient() { if (!ambientIO) return; ambientIO.disconnect(); view.querySelectorAll(".scroll-cue, .is-next .ix-node").forEach((e) => ambientIO.observe(e)); }
+  // the bar steps aside while reading downward and returns the moment the reader scrolls back up (PERF 2: a frame hook, not its own scroll listener)
   let lastY = 0;
-  window.addEventListener("scroll", () => { const y = window.scrollY; root.classList.toggle("bar-solid", y > 40); if (Math.abs(y - lastY) > 6) { root.classList.toggle("bar-away", y > lastY && y > 280); lastY = y; } }, { passive: true });
-  // a safety net: nothing stays invisible if an observer never fires (no scroll on a short page, a paused tab)
-  setInterval(() => { if (!gs) return; view.querySelectorAll(".page-title, .page-lede, .sec-head h2").forEach((el) => { const r = el.getBoundingClientRect(); if (r.top < window.innerHeight && r.bottom > 0 && +getComputedStyle(el).opacity < 0.05) gs.to(el, { autoAlpha: 1, y: 0, duration: 0.6 }); }); }, 1500);
+  frameHooks.add((y) => { root.classList.toggle("bar-solid", y > 40); if (Math.abs(y - lastY) > 6) { root.classList.toggle("bar-away", y > lastY && y > 280); lastY = y; } });
+  // a safety net: nothing stays invisible if an observer never fires (no scroll on a short page, a paused tab). It is only needed just after a page is made (PERF 4)
+  let safetyT = 0;
+  function armSafety() {
+    clearInterval(safetyT); let k = 0;
+    safetyT = setInterval(() => { if (!gs || ++k > 6) { clearInterval(safetyT); return; } view.querySelectorAll(".page-title, .page-lede, .sec-head h2").forEach((el) => { const r = el.getBoundingClientRect(); if (r.top < window.innerHeight && r.bottom > 0 && +getComputedStyle(el).opacity < 0.05) gs.to(el, { autoAlpha: 1, y: 0, duration: 0.6 }); }); }, 1500);
+  }
   function rerender() { const y = window.scrollY; const [name, html, n] = resolve(); if (ctx) ctx.revert(); view.innerHTML = html; mount(name, n); if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); if (ST) ST.refresh(); }
 
   // ---------- reading ----------
@@ -519,16 +587,20 @@
   const tlTip = document.createElement("span"); tlTip.className = "tearline-tip"; tlTip.setAttribute("aria-hidden", "true"); document.body.appendChild(tlTip);
   const tlX = (y) => { for (let i = 1; i < tlPts.length; i++) if (tlPts[i][1] >= y) { const v = (y - tlPts[i - 1][1]) / Math.max(0.01, tlPts[i][1] - tlPts[i - 1][1]); return tlPts[i - 1][0] + (tlPts[i][0] - tlPts[i - 1][0]) * v; } return 8; };
   const tlNotch = document.createElement("button"); tlNotch.type = "button"; tlNotch.className = "tearline-mark"; tlNotch.title = "Back to your bookmark"; tlNotch.setAttribute("aria-label", "Back to your bookmark"); document.body.appendChild(tlNotch);
+  // PERF 6: the line's box and the prose's position are measured when the page is laid out (mount, resize, fonts, text size, a bookmark change), not on every
+  // scroll event; the per-frame work is arithmetic and a few writes. It used to write the clip, then read the line's rect and the mark's (forced layouts).
+  let tlG = { x: 0, y: 0, w: 16, h: 0 };
+  function tlMeasure() { const b = tearline.getBoundingClientRect(); tlG = { x: b.left, y: b.top, w: b.width, h: b.height }; }
   function tlSet(p, pm) {
     tlRect.setAttribute("height", (p * 1000 + 2).toFixed(1));
-    const b = tearline.getBoundingClientRect(), px = (q) => b.left + b.width / 2 + (tlX(q * 1000) - 8) * (b.width / 16);
-    tlTip.style.transform = `translate(${px(p).toFixed(1)}px, ${(b.top + p * b.height).toFixed(1)}px)`;
+    const px = (q) => tlG.x + tlG.w / 2 + (tlX(q * 1000) - 8) * (tlG.w / 16);
+    tlTip.style.transform = `translate(${px(p).toFixed(1)}px, ${(tlG.y + p * tlG.h).toFixed(1)}px)`;
     tlTip.classList.toggle("show", p > 0.002 && p < 0.998);
     const on = pm >= 0; tlNotch.classList.toggle("show", on);
-    if (on) tlNotch.style.transform = `translate(${px(pm).toFixed(1)}px, ${(b.top + pm * b.height).toFixed(1)}px)`;
+    if (on) tlNotch.style.transform = `translate(${px(pm).toFixed(1)}px, ${(tlG.y + pm * tlG.h).toFixed(1)}px)`;
   }
   window.addEventListener("resize", () => { if (typeof readerScroll === "function") readerScroll(); });
-  let readerScroll = null, popY = 0;
+  let readerScroll = null, readerHook = null, popY = 0;
   window.addEventListener("scroll", () => { const p = $("#pop"); if (p && p.classList.contains("show") && Math.abs(window.scrollY - popY) > 40) p.classList.remove("show"); }, { passive: true });
 
   // ---------- the bookmark: one word in each chapter. Held for a moment on a phone, or double-clicked on a computer, it lights
@@ -662,8 +734,13 @@
   function mountReader(n) {
     const prose = $("#prose"), end = $("#chEnd");
     bookmark.mount(prose, n, landing);
-    const onScroll = () => { if (!prose || !prose.isConnected) return; const r = prose.getBoundingClientRect(), h = window.innerHeight; const p = Math.min(1, Math.max(0, (h * 0.6 - r.top) / r.height)), pm = bookmark.at(r); tlSet(p, pm); if (p > 0.04) bookmark.hint(); };
-    if (readerScroll) window.removeEventListener("scroll", readerScroll); readerScroll = onScroll; window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+    let pg = { top: 0, h: 1, pm: -1 };
+    const onScroll = (y) => { if (!prose || !prose.isConnected) return; if (y == null) y = window.pageYOffset; const p = Math.min(1, Math.max(0, (window.innerHeight * 0.6 - (pg.top - y)) / pg.h)); tlSet(p, pg.pm); if (p > 0.04) bookmark.hint(); };
+    const measure = () => { if (!prose || !prose.isConnected) return; tlMeasure(); const r = prose.getBoundingClientRect(); pg = { top: r.top + window.pageYOffset, h: Math.max(1, r.height), pm: bookmark.at(r) }; onScroll(); };
+    if (readerHook) frameHooks.delete(readerHook); readerHook = onScroll; frameHooks.add(onScroll);
+    readerScroll = measure; measure();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+    if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (prose.isConnected) measure(); else ro.disconnect(); }); ro.observe(prose); }
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.disconnect(); if (DVR.markRead(n)) ritual(n); } }), { rootMargin: "0px 0px -30% 0px" });
     io.observe(end);
     // word help
