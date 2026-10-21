@@ -202,7 +202,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     { id: "rim_s", cls: "pc", inShield: true, k: 0.055 },
     { id: "rim_d", cls: "pc mul", inShield: true, k: 0.055, rot: 1 },
     { id: "rim_g", cls: "pc plus", inShield: true, k: 0.055, rot: 1 },
-    { id: "dyn", cls: "pc plus", k: 0.16, op: "d" },
+    { id: "dyn", cls: "pc plus", k: 0.07, op: "d" },   // the lit orbs shift as the shield (base) does: at 0.16 they slid off their nodes whenever the wheel stood off the middle or leaned (2026-10-21)
   ];
   // lite: with the compositor turning, the rim and the collar are each one combined picture that turns (see liteCompose): no multiplied layer (the compositor
   // copies what lies under a multiply at every step) and no isolated group for the shield
@@ -349,7 +349,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   }
   function placeCanvas(id, i, cv, info, cls) {
     var h = (info.half || 1) * UPU, slot = layerEls[id];
-    cv.className = cls; cv.style.left = cv.style.top = (-h) + "px"; cv.style.width = cv.style.height = (2 * h) + "px";
+    cv.className = cls; cv.setAttribute("data-layer", id); cv.style.left = cv.style.top = (-h) + "px"; cv.style.width = cv.style.height = (2 * h) + "px";
     if (!BLEND && /_[dg]$/.test(id)) cv.setAttribute("data-off", "1");
     var old = slot[i]; if (old && old !== cv) dropSpin(old);
     if (old && old.parentNode) old.parentNode.replaceChild(cv, old); else anchors[id].parentNode.insertBefore(cv, anchors[id]);
@@ -656,6 +656,10 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
       }
       var s = (k ? "translate(" + ((tx + pose.ex * zu) * k / sc).toFixed(2) + "px," + ((ty + pose.ey * zu) * k / sc).toFixed(2) + "px)" : "") + (rot ? " rotate(" + (rot > 0 ? spin.a : -spin.b).toFixed(2) + "deg)" : "");
       if (s !== r.t) { r.t = s; r.el.style.transform = s || "none"; }
+    }
+    if (ptsEl) {   // the hover ring and the flare sit on the orbs, so they shift as the shield does
+      var kb = KOF.base || 0, sp = ((tx + pose.ex * zu) * kb / sc).toFixed(2) + "px " + ((ty + pose.ey * zu) * kb / sc).toFixed(2) + "px";
+      if (sp !== ptsEl._t) { ptsEl._t = sp; ptsEl.style.translate = sp; }
     }
   }
   function layersSoon() { layersDirty = true; var tn = now(); if (tn - layersT > 120) placeLayers(); else if (!layersId) layersId = setTimeout(function () { layersId = 0; if (layersDirty) placeLayers(); }, 125); }

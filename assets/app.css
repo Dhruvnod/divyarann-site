@@ -365,8 +365,8 @@ html:not(.js) .intro, html:not(.js) .scroll-cue { display: none; }   /* without 
 .dock-glow.go { animation: dockGlow 2.8s var(--ease) forwards; } .dock-glow.go::after { animation: dockRing 1.6s ease-out 0.15s 2; }
 @keyframes dockGlow { 0% { opacity: 0; transform: scale(0.4); } 18% { opacity: 1; transform: scale(1); } 55% { opacity: 0.85; } 100% { opacity: 0; transform: scale(1.15); } }
 @keyframes dockRing { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.6); } }
-.unlock-note { position: fixed; z-index: 44; display: grid; gap: 4px; max-width: min(300px, calc(100vw - 110px)); padding: 14px 16px; background: color-mix(in srgb, var(--ink-2) 92%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line-2)); box-shadow: 0 0 34px -10px var(--accent); opacity: 0; transform: translateX(10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); pointer-events: none; }
-.unlock-note.show { opacity: 1; transform: none; pointer-events: auto; transition-delay: 0.35s; }
+.unlock-note { position: fixed; z-index: 44; display: grid; gap: 4px; max-width: min(300px, calc(100vw - 110px)); padding: 14px 16px; background: color-mix(in srgb, var(--ink-2) 92%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line-2)); box-shadow: 0 0 34px -10px var(--accent); opacity: 0; visibility: hidden; transform: translateX(10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease), visibility 0s linear 0.6s; pointer-events: none; }
+.unlock-note.show { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0.35s, 0.35s, 0s; }
 .unlock-note .u-k { margin: 0; }
 .unlock-note b { font-family: var(--f-display); font-weight: 300; font-size: 22px; line-height: 1.1; color: var(--bone); }
 .unlock-note .un-more { font-size: 14px; color: var(--bone-2); }

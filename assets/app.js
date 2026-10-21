@@ -824,7 +824,7 @@
   // user's idea). Without anything new in the codex the old line says a point is lit
   const unlock = (() => {
     const glow = document.createElement("span"); glow.className = "dock-glow"; glow.setAttribute("aria-hidden", "true");
-    const note = document.createElement("a"); note.className = "unlock-note"; note.href = "/codex/"; note.setAttribute("role", "status");
+    const note = document.createElement("a"); note.className = "unlock-note"; note.href = "/codex/";   // hidden (not just see-through) until it is shown: an empty link with no name
     document.body.append(glow, note);
     let t = 0;
     const hide = () => { clearTimeout(t); note.classList.remove("show"); };
