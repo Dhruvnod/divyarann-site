@@ -208,7 +208,7 @@
     return `<section class="page-head"><p class="kicker"><span>About</span></p><h1 class="page-title">Divyarann</h1></section>
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
       <h2>The author</h2><p>Written by <a href="/author/">${esc(C.author)}</a>. Write to hello@divyarann.com.</p>
-      <h2>Privacy</h2><p>Your reading progress, bookmarks and settings (text size, colours, sound) are kept in your browser's local storage on this device. Nothing about your reading is sent anywhere, and the site sets no advertising or tracking cookies and runs no analytics.</p>
+      <h2>Privacy</h2><p>Your reading progress, bookmarks and settings (text size, colours, sound) are kept in your browser's local storage on this device. ${C.analytics ? "Visits are counted with GoatCounter (goatcounter.com), which keeps only totals, such as how many people opened each page and where they came from: it uses no cookies, stores no IP addresses and holds nothing that could identify you. The site sets no advertising or tracking cookies." : "Nothing about your reading is sent anywhere, and the site sets no advertising or tracking cookies and runs no analytics."}</p>
       <p>If you join the email list, your address is held by Kit (kit.com), the mail service that sends each new chapter. Every email has a one-click unsubscribe.</p>
       <p>The site is hosted on GitHub Pages. Its fonts come from Google Fonts and some of its code from the cdnjs and jsDelivr networks, which, like any web host, see your IP address when your browser fetches them.</p></section>${foot()}`;
   }
@@ -375,11 +375,39 @@
     current = { name, n };
     document.title = name === "reader" ? `Chapter ${WORDS[n]}: ${chap(n) ? chap(n).title : ""} · Divyarann` : TITLES[name] || TITLES.home;
     landing = true; mount(name, n); landing = false;
+    visits(location.pathname);
     if (window.DVGL) window.DVGL.enter(name, { n, first });
     sound.mode(name === "reader" ? "reading" : "ambient");
     if (!first) { openTear(); const h1 = view.querySelector("h1"); if (h1) { h1.tabIndex = -1; h1.focus({ preventScroll: true }); } }
     if (gs) gs.fromTo(view, { autoAlpha: 1 }, { autoAlpha: 1, duration: 0.01 });
   }
+  // visits: one count per page shown, through GoatCounter when the build adds it (website/config.json "analytics"). The path goes without its query.
+  // Only the first count says where the visitor came from: ?utm_source= (or ?ref=) on arrival, else the referring site; count.js would otherwise give
+  // every later page the referrer the visitor arrived with. ?nocount=1 stops counting this browser (the author's own; count.js's skipgc too), ?nocount=0 undoes it
+  const visits = (() => {
+    const arrival = new URLSearchParams(location.search);
+    let off = false; try {
+      const q = arrival.get("nocount"); if (q === "1" || q === "0") { localStorage.setItem("divyarann-nocount", q); if (q === "1") localStorage.setItem("skipgc", "t"); else localStorage.removeItem("skipgc"); }
+      off = localStorage.getItem("divyarann-nocount") === "1";
+    } catch (e) {}
+    const outside = (r) => { try { return r && new URL(r).host !== location.host ? r : ""; } catch (e) { return ""; } };
+    let first = true, last = null, wait = 0, unseen = null;
+    const send = (path) => {
+      const gc = window.goatcounter; if (!gc || typeof gc.count !== "function") return false;
+      gc.count({ path, title: document.title, referrer: first ? arrival.get("utm_source") || arrival.get("ref") || outside(document.referrer) : "" });
+      first = false; return true;
+    };
+    const start = (path) => { if (send(path)) return; let n = 0; wait = setInterval(() => { if (send(path) || ++n > 40) clearInterval(wait); }, 250); };   // the script loads after the page: up to ten seconds
+    // a page opened in a background tab, or prerendered (from a search result), counts when it is first seen, as count.js does by itself
+    const seen = () => document.visibilityState === "visible" && !document.prerendering;
+    const shown = () => { if (unseen && seen()) { const p = unseen; unseen = null; start(p); } };
+    document.addEventListener("visibilitychange", shown); document.addEventListener("prerenderingchange", shown);
+    return (path) => {
+      if (off || path === last || !document.querySelector("script[data-goatcounter]")) return;
+      last = path; clearInterval(wait);
+      if (seen()) { unseen = null; start(path); } else unseen = path;
+    };
+  })();
   // moving between pages without reloading: internal links push the path, the back button pops it
   function nav(path) { if (path === location.pathname + location.search) return; history.pushState(null, "", path); go(false); }
   document.addEventListener("click", (e) => {
