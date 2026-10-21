@@ -302,7 +302,9 @@
     gs.timeline().to(tearT.querySelector("svg"), { opacity: 0, duration: 0.5, delay: 0.1 }, 0)
       .to(halves[0], { xPercent: -101, duration: 1.0, ease: "expo.out" }, 0.08).to(halves[1], { xPercent: 101, duration: 1.0, ease: "expo.out" }, 0.08);
   }
-  if (gs) { gs.set(halves[0], { xPercent: -101 }); gs.set(halves[1], { xPercent: 101 }); }
+  // x: 0 as well: GSAP read the stylesheet's translateX(-101%) as x and added xPercent to it, so the first page change slid each half in from twice its width away,
+  // and the half came into sight only in the last third of the close (it looked cut short)
+  if (gs) { gs.set(halves[0], { x: 0, xPercent: -101 }); gs.set(halves[1], { x: 0, xPercent: 101 }); }
 
   // ---------- smooth scroll, and the frame (PERF 2) ----------
   // Lenis runs first in every frame, while style is still clean, and the page's scroll-linked work follows in one hook that reads first and writes after. Before,
@@ -369,10 +371,12 @@
   const PATHS = { home: "/", chapters: "/read/", codex: "/codex/", story: "/story/", tears: "/tears/", powers: "/powers/", about: "/about/", author: "/author/", disclaimer: "/disclaimer/" };
   function resolve() { const h = routeKey(); for (const [re, fn] of ROUTES) { const m = h.match(re); if (m) return fn(m); } return ["notfound", notFound()]; }
   async function go(first) {
-    const id = ++navId;
-    closeMenu();
+    // from the menu, the tear closes over the open menu and the menu goes behind it at once: closing it first showed the old page between the two
+    const id = ++navId, fromMenu = !first && root.classList.contains("menu-open");
+    if (!fromMenu) closeMenu();
     const [name, html, n] = resolve();
     if (!first) { window.DVGL && window.DVGL.leave(name); await closeTear(); if (id !== navId) return; }
+    if (fromMenu) closeMenu(true);
     if (ctx) ctx.revert();
     thread.clear(); { const p = $("#pop"); if (p) p.classList.remove("show"); }
     view.innerHTML = html; view.dataset.page = name;
@@ -822,7 +826,13 @@
   function toast(m, ms) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), ms || 2600); }
   window.DVToast = toast;
   const menuBtn = $("#menuBtn");
-  function closeMenu() { root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); $("#menu").setAttribute("aria-hidden", "true"); $("#menu").inert = true; if (lenis) lenis.start(); }
+  // closing the menu tells the wheel too (it stayed in the menu's pose on the next page, and after Escape). now: at once, with no wipe (behind the closed tear)
+  function closeMenu(now) {
+    const was = root.classList.contains("menu-open");
+    if (now && was) { root.classList.add("menu-snap"); requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("menu-snap"))); }
+    root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); $("#menu").setAttribute("aria-hidden", "true"); $("#menu").inert = true; if (lenis) lenis.start();
+    if (was && window.DVGL) window.DVGL.menu(false);
+  }
   menuBtn.addEventListener("click", () => { const open = !root.classList.contains("menu-open"); root.classList.toggle("menu-open", open); menuBtn.setAttribute("aria-expanded", String(open)); $("#menu").setAttribute("aria-hidden", String(!open)); $("#menu").inert = !open; sound.tick(); if (lenis) open ? lenis.stop() : lenis.start(); if (window.DVGL) window.DVGL.menu(open); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
   document.querySelectorAll(".pal button").forEach((b) => b.addEventListener("click", () => {

@@ -65,6 +65,7 @@ html.menu-open .bar { transform: none; opacity: 1; }
 /* ---------- the menu ---------- */
 .menu { position: fixed; inset: 0; z-index: 28; background: color-mix(in srgb, var(--ink-2) 94%, transparent); clip-path: inset(0 0 100% 0); transition: clip-path 0.9s var(--ease); display: grid; align-content: center; padding: 100px var(--gutter) 60px; }
 .menu-open .menu { clip-path: inset(0 0 0 0); }
+.menu-snap .menu, .menu-snap .menu a, .menu-snap #app { transition: none !important; }   /* the menu goes at once behind the closed tear */
 #app { transition: opacity 0.7s var(--ease); } html.menu-open #app { opacity: 0; }
 .menu ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15em; }
 .menu li { overflow: hidden; }
