@@ -359,6 +359,18 @@ html:not(.js) .intro, html:not(.js) .scroll-cue { display: none; }   /* without 
 .hint.show, .toast.show { opacity: 1; }
 .hint b { color: var(--bone); font-family: var(--f-display); font-weight: 400; font-size: 15px; letter-spacing: 0; text-transform: none; margin-right: 6px; }
 .toast { left: 50%; bottom: 28px; transform: translateX(-50%); }
+/* finishing a chapter: the docked shield flares, and a note beside it says what opened in the codex */
+.dock-glow { position: fixed; z-index: 2; pointer-events: none; border-radius: 50%; opacity: 0; mix-blend-mode: screen; background: radial-gradient(circle, color-mix(in srgb, var(--bone) 70%, var(--accent)) 0, var(--accent) 16%, color-mix(in srgb, var(--accent) 45%, transparent) 34%, transparent 66%); }
+.dock-glow::after { content: ""; position: absolute; inset: 37.5%; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0; }
+.dock-glow.go { animation: dockGlow 2.8s var(--ease) forwards; } .dock-glow.go::after { animation: dockRing 1.6s ease-out 0.15s 2; }
+@keyframes dockGlow { 0% { opacity: 0; transform: scale(0.4); } 18% { opacity: 1; transform: scale(1); } 55% { opacity: 0.85; } 100% { opacity: 0; transform: scale(1.15); } }
+@keyframes dockRing { 0% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: scale(2.6); } }
+.unlock-note { position: fixed; z-index: 44; display: grid; gap: 4px; max-width: min(300px, calc(100vw - 110px)); padding: 14px 16px; background: color-mix(in srgb, var(--ink-2) 92%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line-2)); box-shadow: 0 0 34px -10px var(--accent); opacity: 0; transform: translateX(10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); pointer-events: none; }
+.unlock-note.show { opacity: 1; transform: none; pointer-events: auto; transition-delay: 0.35s; }
+.unlock-note .u-k { margin: 0; }
+.unlock-note b { font-family: var(--f-display); font-weight: 300; font-size: 22px; line-height: 1.1; color: var(--bone); }
+.unlock-note .un-more { font-size: 14px; color: var(--bone-2); }
+.unlock-note .un-go { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-top: 4px; }
 .proto { position: fixed; left: 14px; bottom: 14px; z-index: 46; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bone-2); }
 .proto summary { cursor: pointer; list-style: none; border: 1px solid var(--line-2); border-radius: 999px; padding: 7px 12px; background: var(--ink-2); display: inline-block; }
 .proto summary::-webkit-details-marker { display: none; }

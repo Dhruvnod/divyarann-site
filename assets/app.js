@@ -377,6 +377,7 @@
     const id = ++navId, fromMenu = !first && root.classList.contains("menu-open");
     if (!fromMenu) closeMenu();
     const [name, html, n] = resolve();
+    if (!first) unlock.hide();
     if (!first) { window.DVGL && window.DVGL.leave(name); await closeTear(); if (id !== navId) return; }
     if (fromMenu) closeMenu(true);
     if (ctx) ctx.revert();
@@ -819,7 +820,36 @@
     prose.addEventListener("click", (e) => { const w = e.target.closest(".w"); if (!w) { pop.classList.remove("show"); return; } const g = gl[w.dataset.g]; if (!g) return; const r = w.getBoundingClientRect();
       pop.innerHTML = `<b>${esc(g.term)}</b>${esc(g.def)}`; pop.style.left = Math.min(window.innerWidth - 316, Math.max(12, r.left)) + "px"; pop.style.top = (r.bottom + 10) + "px"; pop.classList.add("show"); popY = window.scrollY; sound.tick(); });
   }
-  function ritual(n) { sound.light(); toast(`Chapter ${WORDS[n]} · a point is lit`); if (window.DVGL) window.DVGL.light(n); }
+  // finishing a chapter (the first time): the docked shield flares, and a note beside it says what opened in the codex, with the way there (2026-10-21, the
+  // user's idea). Without anything new in the codex the old line says a point is lit
+  const unlock = (() => {
+    const glow = document.createElement("span"); glow.className = "dock-glow"; glow.setAttribute("aria-hidden", "true");
+    const note = document.createElement("a"); note.className = "unlock-note"; note.href = "/codex/"; note.setAttribute("role", "status");
+    document.body.append(glow, note);
+    let t = 0;
+    const hide = () => { clearTimeout(t); note.classList.remove("show"); };
+    note.addEventListener("click", hide);
+    const dock = () => {   // where the shield sits: the wheel knows; the reading dock's own numbers if it cannot say
+      try { if (window.DVGL && window.DVGL.__pr) { const S = window.DVGL._dbg().S; if (S.r > 0) return { x: S.cx, y: S.cy, r: S.r }; } } catch (e) {}
+      const ph = window.innerWidth < 700; return { x: window.innerWidth - (ph ? 40 : 64), y: window.innerHeight - (ph ? 40 : 64), r: ph ? 24 : 38 };
+    };
+    const count = (k, one, many) => k ? `${k} ${k === 1 ? one : many}` : "";
+    function show(n) {
+      const entries = C.codex.filter((e) => e.ch === n).length, facts = C.cards.reduce((a, k) => a + k.facts.filter((f) => f.ch === n).length, 0), places = C.places.filter((q) => q.ch === n).length;
+      if (!entries && !facts && !places) return false;
+      const d = dock(), size = 8 * d.r, more = [count(facts, "fact", "facts"), count(places, "place", "places")].filter(Boolean).join(", ");
+      Object.assign(glow.style, { left: (d.x - size / 2).toFixed(0) + "px", top: (d.y - size / 2).toFixed(0) + "px", width: size.toFixed(0) + "px", height: size.toFixed(0) + "px" });
+      glow.classList.remove("go"); void glow.offsetWidth; glow.classList.add("go");
+      note.innerHTML = `<span class="u-k">Chapter ${WORDS[n]} · unlocked</span><b>${entries ? count(entries, "codex entry", "codex entries") : more}</b>${entries && more ? `<span class="un-more">and ${more}</span>` : ""}<span class="un-go">Open the codex →</span>`;
+      note.style.right = Math.max(12, window.innerWidth - (d.x - d.r * 1.5 - 14)).toFixed(0) + "px";
+      note.style.top = Math.max(12, Math.min(window.innerHeight - note.offsetHeight - 12, d.y - note.offsetHeight / 2)).toFixed(0) + "px";
+      const tip = $("#toast"); if (tip) tip.classList.remove("show");   // a passing tip (the bookmark hint) gives way
+      clearTimeout(t); requestAnimationFrame(() => note.classList.add("show")); t = setTimeout(hide, 8000);
+      return true;
+    }
+    return { show, hide };
+  })();
+  function ritual(n) { sound.light(); if (!unlock.show(n)) toast(`Chapter ${WORDS[n]} · a point is lit`); if (window.DVGL) window.DVGL.light(n); }
   let rs = 20; try { rs = +localStorage.getItem("divyarann-size") || 20; } catch (e) {} root.style.setProperty("--rs", rs + "px");
   const setRs = (v) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (ST) ST.refresh(); if (readerScroll) readerScroll(); };
   $("#aMinus").addEventListener("click", () => setRs(rs - 1)); $("#aPlus").addEventListener("click", () => setRs(rs + 1));
