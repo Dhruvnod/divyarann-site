@@ -76,16 +76,22 @@
   // ---------- pages ----------
   const chap = (n) => C.chapters.find((c) => c.n === n);
   const nextLine = () => (C.next ? (C.next.date ? `Chapter ${WORDS[C.next.n]} arrives ${C.next.date}.` : `Chapter ${WORDS[C.next.n]} is on its way.`) : "");
+  // read ahead and support (website/config.json early_access and support): nothing at all until they have an address. Supporters read new chapters early
+  const ahead = () => {
+    const e = C.early, s = C.support; if (!e && !s) return "";
+    return `<div class="ahead">${e ? `<p class="u-k">Read ahead</p><p class="fine">Supporters read new chapters before they open here.</p>` : `<p class="u-k">Support the book</p>`}
+      <p class="ahead-links">${e ? `<a class="cta" href="${esc(e.url)}" rel="noopener">${esc(e.label || "Read ahead")}</a>` : ""}${s ? `<a class="cta ghost" href="${esc(s.url)}" rel="noopener">${esc(s.label || "Support the author")}</a>` : ""}</p></div>`;
+  };
   const foot = () => `<footer class="foot"><div class="foot-in"><p>© ${C.year || new Date().getFullYear()} ${esc(C.author)}. All rights reserved.</p>
       <p>Divyarann is a work of fiction. This is the draft web edition of Book One: chapters may be revised, and this edition may be withdrawn when the book is published. Please share the link rather than reposting chapters elsewhere.</p>
-      <p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
+      <p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.support ? `<a href="${esc(C.support.url)}" rel="noopener">${esc(C.support.label || "Support the author")}</a>` : ""}${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
   const follow = () => {
     const nl = C.newsletter, insta = C.instagram, handle = insta ? insta.replace(/\/+$/, "").split("/").pop() : "";
     return `<section class="section follow"><p class="kicker"><span>New chapters</span></p><h2>Be told when the next tear opens</h2>
       <p class="follow-lead">${esc(C.nextLead || "")}</p>
       ${nl ? `<form class="follow-form" action="${esc(nl.action)}" method="post"><label class="visually-hidden" for="em">Email address</label><input id="em" type="email" name="${esc(nl.field)}" placeholder="Your email" autocomplete="email" required><button type="submit">Get each chapter</button></form>
       <p class="fine">One email when a chapter is released, nothing else. The list is kept by Kit, the mail service; every email has a one-click unsubscribe.</p>` : ""}
-      <p class="follow-links">${insta ? `<a href="${esc(insta)}" rel="noopener">Instagram @${esc(handle)}</a>` : ""}<a href="/feed.xml">RSS feed</a></p></section>`;
+      <p class="follow-links">${insta ? `<a href="${esc(insta)}" rel="noopener">Instagram @${esc(handle)}</a>` : ""}<a href="/feed.xml">RSS feed</a></p>${ahead()}</section>`;
   };
 
   function home() {
@@ -98,7 +104,7 @@
         <span class="ix-side ix-l"><span class="ix-t">${esc(c.title)}</span><span class="ix-g">${esc(c.gloss)}</span></span>
         <span class="ix-node"><span class="ix-no" lang="hi">${DEVA(pad(c.n))}</span></span>
         <span class="ix-side ix-r"><span class="ix-meta">${DVR.isRead(c.n) ? "Lit" : c.n === nextN ? (r ? "Next" : "Begin") + " · " + c.minutes + " min" : c.minutes + " min"}</span><span class="ix-teaser">${esc(c.teaser)}</span></span></a></li>`).join("");
-    const locked = C.next ? `<li class="ix-row is-locked"><span class="ix-link"><span class="ix-side ix-l"><span class="ix-t">Sealed</span></span><span class="ix-node"><span class="ix-no" lang="hi">${DEVA(pad(C.next.n))}</span></span><span class="ix-side ix-r"><span class="ix-meta">Soon</span><span class="ix-teaser">${esc(nextLine())}</span></span></span></li>` : "";
+    const locked = C.next ? `<li class="ix-row is-locked"><span class="ix-link"><span class="ix-side ix-l"><span class="ix-t">Sealed</span></span><span class="ix-node"><span class="ix-no" lang="hi">${DEVA(pad(C.next.n))}</span></span><span class="ix-side ix-r"><span class="ix-meta">Soon${C.early ? ` · <a href="${esc(C.early.url)}" rel="noopener">${esc(C.early.label || "Read ahead")}</a>` : ""}</span><span class="ix-teaser">${esc(nextLine())}</span></span></span></li>` : "";
     return `
       <div class="torn" id="torn"><svg class="thread" id="thread" aria-hidden="true"></svg><svg class="thread thread-pulse" id="threadPulse" aria-hidden="true"></svg>
       <section class="hero" data-gl="hero">
@@ -161,6 +167,7 @@
           </div>
           <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="kicker"><span>Next</span></span><span class="fine">${esc(nextLine())}</span>`}
             ${prev ? `<a class="ch-prev" href="/read/${n - 1}/">← ${esc(prev.title)}</a>` : ""}</div>
+          ${next ? "" : ahead()}
         </footer>
       </article>${foot()}`;
   }
@@ -615,6 +622,27 @@
   const tlTip = document.createElement("span"); tlTip.className = "tearline-tip"; tlTip.setAttribute("aria-hidden", "true"); document.body.appendChild(tlTip);
   const tlX = (y) => { for (let i = 1; i < tlPts.length; i++) if (tlPts[i][1] >= y) { const v = (y - tlPts[i - 1][1]) / Math.max(0.01, tlPts[i][1] - tlPts[i - 1][1]); return tlPts[i - 1][0] + (tlPts[i][0] - tlPts[i - 1][0]) * v; } return 8; };
   const tlNotch = document.createElement("button"); tlNotch.type = "button"; tlNotch.className = "tearline-mark"; tlNotch.title = "Back to your bookmark"; tlNotch.setAttribute("aria-label", "Back to your bookmark"); document.body.appendChild(tlNotch);
+  // the reading line is also a scroll bar: with a mouse, a click anywhere on it glides to that point of the chapter and a drag follows the pointer; its point of
+  // light can be dragged with a finger too (on a touch screen the rest of the line leaves the edge of the screen to scroll the page)
+  const tlHit = document.createElement("div"); tlHit.className = "tearline-hit"; tlHit.setAttribute("aria-hidden", "true"); document.body.insertBefore(tlHit, tlTip);
+  let tlDrag = null;
+  const tlAt = (cy) => Math.min(1, Math.max(0, (cy - tlG.y) / Math.max(1, tlG.h)));
+  function tlDown(e) {
+    if (!readerSeek || (e.pointerType === "mouse" && e.button !== 0)) return;
+    e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId);
+    tlDrag = { id: e.pointerId, y0: e.clientY, moved: false }; root.classList.add("tl-drag");
+    if (e.currentTarget === tlHit) readerSeek(tlAt(e.clientY), false);
+  }
+  function tlMove(e) {
+    if (!tlDrag || e.pointerId !== tlDrag.id || (!tlDrag.moved && Math.abs(e.clientY - tlDrag.y0) < 3)) return;
+    tlDrag.moved = true; readerSeek(tlAt(e.clientY), true);
+  }
+  function tlUp(e) { if (tlDrag && e.pointerId === tlDrag.id) { tlDrag = null; root.classList.remove("tl-drag"); } }
+  const tlHover = (on) => (e) => { if (!on && (e.relatedTarget === tlHit || e.relatedTarget === tlTip)) return; root.classList.toggle("tl-hover", on); };
+  [tlHit, tlTip].forEach((el) => {
+    el.addEventListener("pointerdown", tlDown); el.addEventListener("pointermove", tlMove); ["pointerup", "pointercancel", "lostpointercapture"].forEach((t) => el.addEventListener(t, tlUp));
+    el.addEventListener("pointerenter", tlHover(true)); el.addEventListener("pointerleave", tlHover(false));
+  });
   // PERF 6: the line's box and the prose's position are measured when the page is laid out (mount, resize, fonts, text size, a bookmark change), not on every
   // scroll event; the per-frame work is arithmetic and a few writes. It used to write the clip, then read the line's rect and the mark's (forced layouts).
   let tlG = { x: 0, y: 0, w: 16, h: 0 };
@@ -628,7 +656,7 @@
     if (on) tlNotch.style.transform = `translate(${px(pm).toFixed(1)}px, ${(tlG.y + pm * tlG.h).toFixed(1)}px)`;
   }
   window.addEventListener("resize", () => { if (typeof readerScroll === "function") readerScroll(); });
-  let readerScroll = null, readerHook = null, popY = 0;
+  let readerScroll = null, readerSeek = null, readerHook = null, popY = 0;
   window.addEventListener("scroll", () => { const p = $("#pop"); if (p && p.classList.contains("show") && Math.abs(window.scrollY - popY) > 40) p.classList.remove("show"); }, { passive: true });
 
   // ---------- the bookmark: one word in each chapter. Held for a moment on a phone, or double-clicked on a computer, it lights
@@ -767,6 +795,12 @@
     const measure = () => { if (!prose || !prose.isConnected) return; tlMeasure(); const r = prose.getBoundingClientRect(); pg = { top: r.top + window.pageYOffset, h: Math.max(1, r.height), pm: bookmark.at(r) }; onScroll(); };
     if (readerHook) frameHooks.delete(readerHook); readerHook = onScroll; frameHooks.add(onScroll);
     readerScroll = measure; measure();
+    // the reading line as a scroll bar: the scroll position that puts the reading point at p of the chapter (onScroll the other way round)
+    readerSeek = (p, now) => {
+      if (!prose.isConnected || !root.classList.contains("on-reader")) return;
+      const y = Math.max(0, Math.min(document.documentElement.scrollHeight - window.innerHeight, pg.top + p * pg.h - window.innerHeight * 0.6));
+      if (lenis) lenis.scrollTo(y, now ? { immediate: true, force: true } : { duration: 0.9, force: true }); else window.scrollTo({ top: y, behavior: now || reduced() ? "auto" : "smooth" });
+    };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
     if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (prose.isConnected) measure(); else ro.disconnect(); }); ro.observe(prose); }
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.disconnect(); if (DVR.markRead(n)) ritual(n); } }), { rootMargin: "0px 0px -30% 0px" });

@@ -171,6 +171,11 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 .four-line { color: var(--bone-2); font-size: 16.5px; line-height: 1.5; }
 .follow { text-align: center; display: grid; justify-items: center; gap: 22px; }
 .follow h2 { margin: 0; font-family: var(--f-display); font-weight: 300; font-size: clamp(36px, 5.6vw, 92px); line-height: 1; letter-spacing: -0.025em; max-width: 14ch; }
+/* read ahead and support: shown only once config.json gives them an address */
+.ahead { display: grid; justify-items: center; gap: 8px; width: min(520px, 100%); margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--line); text-align: center; }
+.ahead .fine { margin: 0; }
+.ahead-links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 22px; margin: 10px 0 0; }
+.ix-meta a { color: var(--accent); }
 .follow-form { display: flex; gap: 12px; width: min(520px, 100%); border-bottom: 1px solid var(--line-2); padding-bottom: 10px; margin-top: 8px; }
 .follow-form input { flex: 1; min-width: 0; background: none; border: 0; color: var(--bone); font: inherit; font-size: 19px; outline: none; }
 .follow-form input::placeholder { color: var(--muted); }
@@ -238,6 +243,15 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 .tearline-mark::before { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; transform: rotate(45deg); background: var(--bm); box-shadow: 0 0 8px 2px var(--bm-glow), 0 0 20px 4px var(--bm-glow); transition: transform 0.3s var(--ease); }
 .tearline-mark:hover::before { transform: rotate(45deg) scale(1.35); }
 .on-reader .tearline-mark.show { opacity: 1; pointer-events: auto; }
+/* the reading line is a scroll bar too: with a mouse the whole line takes a click (glide there) or a drag; on a touch screen only its point of light can be dragged,
+   so the edge of the screen still scrolls the page */
+.tearline-hit { position: fixed; top: 0; left: calc(max(10px, calc(var(--gutter) * 0.45)) - 10px); width: 36px; height: 100vh; z-index: 2; display: none; cursor: pointer; touch-action: none; }
+@media (hover: hover) and (pointer: fine) { .on-reader .tearline-hit { display: block; } }
+.on-reader .tearline-tip.show { pointer-events: auto; cursor: grab; touch-action: none; }
+.tearline-tip::after { content: ""; position: absolute; inset: -16px; }
+.tl-hover .tearline .base, .tl-drag .tearline .base { stroke: var(--muted); }
+.tl-hover .tearline-tip, .tl-drag .tearline-tip { width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; }
+.tl-drag, .tl-drag * { cursor: grabbing !important; user-select: none; }
 .dv-touch .prose { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }   /* the hold is the bookmark, not a text selection */
 @media (hover: none) and (pointer: coarse) { .prose { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .prose mark.bm { animation: none !important; } .bm-charge { transition: none !important; } }
@@ -317,8 +331,10 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 /* ---------- the threshold (first visit) ---------- */
 .intro { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none; }
 html:not(.js) .intro, html:not(.js) .scroll-cue { display: none; }   /* without JavaScript: just the words */
-.intro-line { position: absolute; left: 50%; top: 0; height: 100%; width: 40px; transform: translateX(-50%); }
-.intro-line path { fill: none; stroke: var(--bone); stroke-width: 1; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 5px var(--accent)); }
+/* the bolt's box is twice as wide as its zigzag, lets it overflow, and carries the glow: on the path the glow stopped at the path's own bounds, and where the bolt swung
+   past its old 40 px box (the middle of the screen) the glow and the line itself were cut off */
+.intro-line { position: absolute; left: 50%; top: 0; height: 100%; width: 80px; transform: translateX(-50%); overflow: visible; filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 55%, transparent)); }
+.intro-line path { fill: none; stroke: var(--bone); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .intro-count { position: absolute; left: var(--gutter); bottom: clamp(24px, 6vh, 56px); font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--bone-2); }
 .intro-count b { font-family: var(--f-display); font-weight: 300; font-size: clamp(44px, 6vw, 88px); letter-spacing: -0.02em; color: var(--bone); display: block; line-height: 1; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
 .intro-word { position: absolute; right: var(--gutter); bottom: clamp(24px, 6vh, 56px); text-align: right; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
@@ -360,6 +376,7 @@ html.no-webgl canvas#gl { display: none; }
   .lit-count { display: none; }
   .hero-wheel { width: min(64vh, 94vw); }
   .tearline { left: 4px; width: 10px; }
+  .tearline-hit { left: 0; width: 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.2s !important; }
