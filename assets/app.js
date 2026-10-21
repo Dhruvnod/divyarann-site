@@ -481,9 +481,12 @@
       const fin = E("linearGradient", { id: "thIn", gradientUnits: "userSpaceOnUse", x1: 0, y1: startY, x2: 0, y2: startY + 110 }, defs);
       E("stop", { offset: 0, "stop-color": "#000" }, fin); E("stop", { offset: 1, "stop-color": "#fff" }, fin);
       E("rect", { x: 0, y: startY - 2, width: W, height: 112, fill: "url(#thIn)" }, mask);
-      torn.querySelectorAll("[data-hush]").forEach((n, i) => {   // the thread dims behind words so the text stays clean
-        const b = n.getBoundingClientRect(); if (!b.height) return;
+      torn.querySelectorAll("[data-hush]").forEach((n, i) => {   // the thread dims behind words so the text stays clean: only where it runs behind them,
+        const b = n.getBoundingClientRect(); if (!b.height) return;   // since beside a column of text (the premise on a computer) it kept losing its light
+        const rg = document.createRange(); rg.selectNodeContents(n); const lr = [...rg.getClientRects()].filter((q) => q.width && q.height);   // the lines' own extent, not the box's
         const t0 = b.top - T.top - 34, t1 = b.bottom - T.top + 34, k = 34 / Math.max(80, t1 - t0);
+        const l = (lr.length ? Math.min(...lr.map((q) => q.left)) : b.left) - T.left - 28, r = (lr.length ? Math.max(...lr.map((q) => q.right)) : b.right) - T.left + 28;
+        if (!pts.some(([x, y]) => y >= t0 && y <= t1 && x >= l && x <= r)) return;
         const g = E("linearGradient", { id: "thH" + i, gradientUnits: "userSpaceOnUse", x1: 0, y1: t0, x2: 0, y2: t1 }, defs);
         [[0, "#fff"], [k, "#262626"], [1 - k, "#262626"], [1, "#fff"]].forEach(([o, col]) => E("stop", { offset: o, "stop-color": col }, g));
         E("rect", { x: 0, y: t0, width: W, height: t1 - t0, fill: `url(#thH${i})` }, mask);
@@ -861,7 +864,12 @@
   const intro = $("#intro"), hold = $("#hold"), holdBtn = $("#holdBtn"), fg = holdBtn.querySelector(".fg");
   const iPts = jagged([20, 0], [20, 1000], 6, 0.1, rng(3)), iPath = intro.querySelector(".intro-line path");
   iPath.setAttribute("d", "M" + iPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L"));
-  let iLen = 1000; try { iLen = iPath.getTotalLength(); } catch (e) {}
+  // the bolt's stroke does not scale with its box, so its dashes are measured on the screen: its length is the path's length on screen, not getTotalLength()
+  // (in the drawing's own units, about 1006), which left the lower part of the bolt undrawn on any screen taller than that. Once drawn it is shown whole
+  const iSvg = intro.querySelector(".intro-line");
+  const iScreenLen = () => { const b = iSvg.getBoundingClientRect(), sx = b.width / 80, sy = b.height / 1000; let L = 0; for (let i = 1; i < iPts.length; i++) L += Math.hypot((iPts[i][0] - iPts[i - 1][0]) * sx, (iPts[i][1] - iPts[i - 1][1]) * sy); return Math.ceil(L) + 2; };
+  const iWhole = () => { iPath.style.strokeDasharray = "none"; iPath.style.strokeDashoffset = "0"; };
+  const iLen = iScreenLen();
   iPath.style.strokeDasharray = iLen; iPath.style.strokeDashoffset = iLen;
   let entered = false;
   function enter(withSound) {
@@ -877,12 +885,12 @@
     const returning = root.classList.contains("returning"), n = DVR.reached();
     $("#introLabel").textContent = "of 18 lit";
     if (window.DVGL) window.DVGL.intro(returning);
-    if (!gs || reduced()) { $("#introNum").textContent = pad(n); if (returning) setTimeout(() => enter(false), 300); else hold.classList.add("ready"); return; }
+    if (!gs || reduced()) { iWhole(); $("#introNum").textContent = pad(n); if (returning) setTimeout(() => enter(false), 300); else hold.classList.add("ready"); return; }
     // the count keeps its element: a reader who enters before it has finished removes the threshold, and looking the element up again then threw on every frame
     // until the count ended, which stopped every later ticker listener (the wheel's wipe stood still for a third of a second)
     const num = { v: 0 }, numEl = $("#introNum");
     const tl = gs.timeline();
-    tl.to(iPath, { strokeDashoffset: 0, duration: returning ? 0.7 : 1.6, ease: "power2.inOut" }, returning ? 0 : 0.3)
+    tl.to(iPath, { strokeDashoffset: 0, duration: returning ? 0.7 : 1.6, ease: "power2.inOut", onComplete: iWhole }, returning ? 0 : 0.3)
       .to(num, { v: n, duration: returning ? 0.6 : 1.8, ease: "power2.out", onUpdate: () => { numEl.textContent = pad(Math.round(num.v)); } }, returning ? 0.1 : 0.8);
     if (returning) tl.add(() => enter(false), 1.3);
     else tl.add(() => hold.classList.add("ready"), 3.2);

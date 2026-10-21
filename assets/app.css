@@ -77,10 +77,12 @@ html.menu-open .bar { transform: none; opacity: 1; }
 .menu a.is-on small { color: var(--accent); }
 
 /* ---------- home ---------- */
-.hero { position: relative; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; }
-.hero-wheel { width: min(76vh, 92vw); aspect-ratio: 1; }
-.hero-type { position: absolute; left: var(--gutter); right: var(--gutter); bottom: clamp(28px, 7vh, 72px); display: grid; gap: 10px; pointer-events: none; }
-.title { margin: 0; font-family: var(--f-display); font-weight: 300; font-size: clamp(64px, 15.5vw, 270px); line-height: 0.8; letter-spacing: -0.035em; display: flex; justify-content: space-between; font-variation-settings: "opsz" 144; }
+/* the hero: the wheel stands in the space above the title, never under it (the title across the wheel was distracting, 2026-10-21). The title has its own band at the
+   foot of the first screen, sized by the screen's height as well as its width, and the wheel, whose outer ring reaches about 1.36 times its box, fills what is left */
+.hero { position: relative; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; --tsize: clamp(56px, min(12.5vw, 20vh), 230px); --tfoot: clamp(24px, 5vh, 56px); --tband: calc(var(--tsize) * 0.8 + 58px + var(--tfoot)); padding: 64px 0 var(--tband); }
+.hero-wheel { width: min(92vw, calc((100vh - 64px - var(--tband)) / 1.36)); width: min(92vw, calc((100svh - 64px - var(--tband)) / 1.36)); aspect-ratio: 1; }
+.hero-type { position: absolute; left: var(--gutter); right: var(--gutter); bottom: var(--tfoot); display: grid; gap: 10px; pointer-events: none; }
+.title { margin: 0; font-family: var(--f-display); font-weight: 300; font-size: var(--tsize); line-height: 0.8; letter-spacing: -0.035em; display: flex; justify-content: space-between; font-variation-settings: "opsz" 144; }
 .title span { display: inline-block; transform: translateY(110%); opacity: 0; }
 .entered .title span { animation: rise 1.2s var(--ease) forwards; animation-delay: calc(var(--i) * 0.045s + 0.15s); }
 @keyframes rise { to { transform: none; opacity: 1; } }
@@ -92,6 +94,7 @@ html.menu-open .bar { transform: none; opacity: 1; }
 @keyframes cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
 .section { position: relative; padding: clamp(90px, 16vh, 180px) var(--gutter); }
 .premise-text { margin: 18px 0 0; font-family: var(--f-display); font-weight: 300; font-size: clamp(30px, 4.3vw, 66px); line-height: 1.16; letter-spacing: -0.015em; max-width: 20ch; }
+@media (min-width: 900px) { .premise-text { max-width: min(20ch, calc(50vw - var(--gutter) - 64px)); } }   /* on a computer the premise stays left of the tear, which keeps its light beside it */
 .premise-text .ln { display: block; overflow: hidden; } .premise-text .ln > span { display: inline-block; }
 .cta-row { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 44px; align-items: center; }
 .cta { position: relative; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; padding: 16px 26px; border: 1px solid var(--bone-2); border-radius: 999px; transition: background var(--t-hover) var(--ease), color var(--t-hover) var(--ease); }
@@ -374,7 +377,8 @@ html.no-webgl canvas#gl { display: none; }
   .four-card:nth-child(3) { border-left: 1px solid var(--line); }
   .cards, .trilogy, .cx { grid-template-columns: minmax(0, 1fr); }
   .lit-count { display: none; }
-  .hero-wheel { width: min(64vh, 94vw); }
+  .hero-wheel { width: min(94vw, 64vh, calc((100svh - 64px - var(--tband)) / 1.36)); }
+  .hero .scroll-cue { display: none; }   /* on a phone it sat on the wheel's ring */
   .tearline { left: 4px; width: 10px; }
   .tearline-hit { left: 0; width: 28px; }
 }
