@@ -280,7 +280,10 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 @media (max-width: 480px) { .dial { gap: 10px 10px; } .dial button { width: 34px !important; height: 34px !important; font-size: 14px; } }   /* phones: the six buttons on one line */
 .dial button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2); font-family: var(--f-deva); font-size: 15px; color: var(--bone-2); transition: all var(--t-hover) var(--ease); }
 .dial button[aria-pressed="true"] { background: var(--accent); color: var(--ink); border-color: var(--accent); }
-.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border-block: 1px solid var(--line); margin: 0 var(--gutter); }
+/* the lines between the cards (and the books) are drawn by the items, so they arrive with them: the grid's own background, showing through 1 px gaps, stood as a
+   grey slab while the cards faded in after a page change */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-block: 1px solid var(--line); margin: 0 var(--gutter); }
+.cards > :nth-child(odd), .trilogy > :nth-child(odd) { border-right: 1px solid var(--line); } .cards > :nth-child(n+3), .trilogy > :nth-child(n+3) { border-top: 1px solid var(--line); }
 .card { background: var(--ink); padding: clamp(26px, 3vw, 44px); display: grid; gap: 14px; align-content: start; }
 .card h3 { margin: 0; font-family: var(--f-display); font-weight: 300; font-size: clamp(44px, 5vw, 80px); line-height: 0.95; letter-spacing: -0.025em; }
 .card-line { margin: 0; color: var(--bone-2); font-size: 18px; }
@@ -307,7 +310,7 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 /* ---------- story, tears, powers, about ---------- */
 .beats { padding: 0 var(--gutter); }
 .beat { min-height: 70vh; display: grid; align-content: center; max-width: 22ch; font-family: var(--f-display); font-weight: 300; font-size: clamp(30px, 4.2vw, 64px); line-height: 1.15; letter-spacing: -0.015em; }
-.trilogy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); margin: 0 var(--gutter); border-block: 1px solid var(--line); }
+.trilogy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 var(--gutter); border-block: 1px solid var(--line); }
 .book { background: var(--ink); padding: 34px; display: grid; gap: 12px; }
 .book h3 { margin: 0; font-family: var(--f-display); font-weight: 300; font-size: clamp(40px, 4.4vw, 70px); line-height: 1; }
 .book h3 span { font-size: 0.45em; color: var(--accent); }
@@ -327,7 +330,7 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 
 /* ---------- the tear between pages ---------- */
 .tear-t { position: fixed; inset: 0; z-index: 35; pointer-events: none; }
-.tear-t .half { position: absolute; top: 0; bottom: 0; width: 50.5%; background: var(--ink); }
+.tear-t .half { position: absolute; top: 0; bottom: 0; width: 60%; background: var(--ink); }   /* 60%: each wall reaches past the seam wherever it wanders (up to about 7% from the middle); at 50.5% the page showed between them */
 .tear-t .half.l { left: 0; transform: translateX(-101%); } .tear-t .half.r { right: 0; transform: translateX(101%); }
 .tear-t svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; }
 .tear-t svg path { fill: none; stroke: var(--accent); stroke-width: 1.4; filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 18px var(--accent)); vector-effect: non-scaling-stroke; }
@@ -377,6 +380,7 @@ html.no-webgl canvas#gl { display: none; }
   .four-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .four-card { min-height: 240px; border-bottom: 1px solid var(--line); }
   .four-card:nth-child(3) { border-left: 1px solid var(--line); }
   .cards, .trilogy, .cx { grid-template-columns: minmax(0, 1fr); }
+  .cards > *, .trilogy > * { border-right: 0 !important; } .cards > * + *, .trilogy > * + * { border-top: 1px solid var(--line); }
   .lit-count { display: none; }
   .hero-wheel { width: min(94vw, 64vh, calc((100svh - 64px - var(--tband)) / 1.36)); }
   .hero .scroll-cue { display: none; }   /* on a phone it sat on the wheel's ring */

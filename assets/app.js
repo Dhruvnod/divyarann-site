@@ -280,10 +280,12 @@
   // ---------- the tear between pages ----------
   const tearT = $("#tearT"), halves = tearT.querySelectorAll(".half"), seam = $("#tearT path");
   function shapeTear() {
-    const pts = jagged([50, -2], [50, 102], 5, 0.12, rng((Math.random() * 1e6) | 0));
+    // each wall is 60% of the screen (the left one from 0, the right one from 40%) and is cut along the seam in its own box, so the two always meet; the seam
+    // stays within 41 to 59%. At 50.5% wide, a seam swinging past 50.5% (or before 49.5%) left a gap through which the page showed
+    const pts = jagged([50, -2], [50, 102], 5, 0.12, rng((Math.random() * 1e6) | 0)).map(([x, y]) => [Math.min(59, Math.max(41, x)), y]);
     const line = pts.map(([x, y]) => `${x.toFixed(2)}% ${y.toFixed(2)}%`);
-    halves[0].style.clipPath = `polygon(0% 0%, ${pts.map(([x, y]) => `${(x / 50.5 * 100).toFixed(2)}% ${y.toFixed(2)}%`).join(", ")}, 0% 100%)`;
-    halves[1].style.clipPath = `polygon(100% 0%, ${pts.map(([x, y]) => `${((x - 49.5) / 50.5 * 100).toFixed(2)}% ${y.toFixed(2)}%`).join(", ")}, 100% 100%)`;
+    halves[0].style.clipPath = `polygon(0% 0%, ${pts.map(([x, y]) => `${(x / 60 * 100).toFixed(2)}% ${y.toFixed(2)}%`).join(", ")}, 0% 100%)`;
+    halves[1].style.clipPath = `polygon(100% 0%, ${pts.map(([x, y]) => `${((x - 40) / 60 * 100).toFixed(2)}% ${y.toFixed(2)}%`).join(", ")}, 100% 100%)`;
     seam.setAttribute("d", "M" + pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" L"));
     void line;
   }
