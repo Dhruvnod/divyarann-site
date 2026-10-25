@@ -54,20 +54,23 @@
   const KEY = "divyarann-progress";
   let P = { read: {}, demo: 0 };
   try { P = Object.assign(P, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} };
+  // reader accounts (the block near the end) hear of every change to what follows a reader between devices: chapters, bookmarks, text size, colours
+  let synced = null;
+  const changed = () => { if (synced) synced(); };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} changed(); };
   const fire = () => window.dispatchEvent(new CustomEvent("dvr:progress"));
   const DVR = window.DVR = {
     reached() { if (P.demo) return P.demo; let m = 0; for (const k in P.read) m = Math.max(m, +k); return Math.min(m, C.released); },
     isRead: (n) => !!P.read[n] || (P.demo >= n),
     markRead(n) { if (P.read[n]) return false; P.read[n] = Date.now(); P.demo = 0; save(); fire(); return true; },
-    setReached(n) { P.read = {}; P.demo = 0; for (let i = 1; i <= n; i++) P.read[i] = 1; save(); fire(); },
+    setReached(n) { P.read = {}; P.demo = 0; for (let i = 1; i <= n; i++) P.read[i] = 1; P.reset = Date.now(); save(); fire(); },   // set by hand: on another device it wins over what was read there before
     demo(n) { P.demo = n; save(); fire(); },
   };
   // the bookmark: one word in each chapter, kept as { chapter: { p: paragraph, o: where in it, w: the word, t: when } }
   const BKEY = "divyarann-bookmark";
-  let BM = {};
-  try { BM = JSON.parse(localStorage.getItem(BKEY) || "{}") || {}; } catch (e) {}
-  const bmSave = () => { try { localStorage.setItem(BKEY, JSON.stringify(BM)); } catch (e) {} };
+  let BM = {}, BMG = {};   // BMG: when each chapter's bookmark was removed, so a removal reaches the reader's other devices
+  try { BM = JSON.parse(localStorage.getItem(BKEY) || "{}") || {}; BMG = JSON.parse(localStorage.getItem("divyarann-bmgone") || "{}") || {}; } catch (e) {}
+  const bmSave = () => { try { localStorage.setItem(BKEY, JSON.stringify(BM)); localStorage.setItem("divyarann-bmgone", JSON.stringify(BMG)); } catch (e) {} changed(); };
   // a bookmark left after the last chapter they finished is where they stopped reading
   const bmBack = () => { let last = 0, best = 0; for (const k in P.read) last = Math.max(last, +P.read[k] || 0); for (const k in BM) if (chap(+k) && BM[k].t > last && (!best || BM[k].t > BM[best].t)) best = +k; return best; };
   function updateCount() { const n = DVR.reached(); const el = $("#litCount b"); if (el) el.textContent = pad(n); }
@@ -167,6 +170,7 @@
           </div>
           <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="kicker"><span>Next</span></span><span class="fine">${esc(nextLine())}</span>`}
             ${prev ? `<a class="ch-prev" href="/read/${n - 1}/">← ${esc(prev.title)}</a>` : ""}</div>
+          ${acct.nudge()}
           ${next ? "" : ahead()}
         </footer>
       </article>${foot()}`;
@@ -216,8 +220,9 @@
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
       <h2>The author</h2><p>Written by <a href="/author/">${esc(C.author)}</a>. Write to hello@divyarann.com.</p>
       <h2>Privacy</h2><p>Your reading progress, bookmarks and settings (text size, colours, sound) are kept in your browser's local storage on this device. ${C.analytics ? "Visits are counted with GoatCounter (goatcounter.com), which keeps only totals, such as how many people opened each page and where they came from: it uses no cookies, stores no IP addresses and holds nothing that could identify you. The site sets no advertising or tracking cookies." : "Nothing about your reading is sent anywhere, and the site sets no advertising or tracking cookies and runs no analytics."}</p>
+      ${C.accounts ? `<h2>Your account</h2><p>Signing in is optional: as a guest you read on this device alone. If you sign in, your account (your name and email address from Google, or the email address you sign up with) and a copy of your reading progress, bookmarks and text size and colours are kept with Google Firebase, in its Mumbai data centre, so they follow you to any device you sign in on. Signing in also adds your address to the chapter emails at Kit, which you confirm from your inbox. You can sign out, or delete your account and its saved progress, from the menu at any time.</p>` : ""}
       <p>If you join the email list, your address is held by Kit (kit.com), the mail service that sends each new chapter. Every email has a one-click unsubscribe.</p>
-      <p>The site is hosted on GitHub Pages. Its fonts come from Google Fonts and some of its code from the cdnjs and jsDelivr networks, which, like any web host, see your IP address when your browser fetches them.</p></section>${foot()}`;
+      <p>The site is hosted on GitHub Pages. Its fonts come from Google Fonts and some of its code from the cdnjs and jsDelivr networks${C.accounts ? ", and the sign-in code from Google (gstatic.com), loaded only when you sign in" : ""}, which, like any web host, see your IP address when your browser fetches them.</p></section>${foot()}`;
   }
 
   // a static wheel for devices without WebGL
@@ -389,6 +394,7 @@
     current = { name, n };
     document.title = name === "reader" ? `Chapter ${WORDS[n]}: ${chap(n) ? chap(n).title : ""} · Divyarann` : TITLES[name] || TITLES.home;
     landing = true; mount(name, n); landing = false;
+    window.dispatchEvent(new CustomEvent("dvr:route", { detail: name }));
     visits(location.pathname);
     if (window.DVGL) window.DVGL.enter(name, { n, first });
     sound.mode(name === "reader" ? "reading" : "ambient");
@@ -712,11 +718,11 @@
     function douse(m) { m.classList.remove("bm-in", "bm-flare"); m.classList.add("bm-out"); setTimeout(() => { const p = m.parentNode; if (!p) return; while (m.firstChild) p.insertBefore(m.firstChild, m); m.remove(); p.normalize(); }, reduced() ? 0 : 700); }
     function flare() { if (!mark) return; mark.classList.remove("bm-in", "bm-flare"); void mark.offsetWidth; mark.classList.add("bm-flare"); }
     function toggle(h) {
-      if (mark && mark.contains(h[0])) { douse(mark); mark = null; delete BM[n]; bmSave(); toast("Bookmark removed"); }
+      if (mark && mark.contains(h[0])) { douse(mark); mark = null; delete BM[n]; BMG[n] = Date.now(); bmSave(); toast("Bookmark removed"); }
       else {
         const block = blockOf(h[0]), b = { p: [...prose.children].indexOf(block), o: offsetIn(block, h[0], h[1]), w: h[0].data.slice(h[1], h[2]), t: Date.now() };
         if (mark) douse(mark);
-        mark = light(h, "bm-in"); BM[n] = b; bmSave(); toast("Bookmarked · the chapter reopens here");
+        mark = light(h, "bm-in"); BM[n] = b; delete BMG[n]; bmSave(); toast("Bookmarked · the chapter reopens here");
       }
       sound.tick(); if (readerScroll) readerScroll();
     }
@@ -851,7 +857,9 @@
   })();
   function ritual(n) { sound.light(); if (!unlock.show(n)) toast(`Chapter ${WORDS[n]} · a point is lit`); if (window.DVGL) window.DVGL.light(n); }
   let rs = 20; try { rs = +localStorage.getItem("divyarann-size") || 20; } catch (e) {} root.style.setProperty("--rs", rs + "px");
-  const setRs = (v) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (ST) ST.refresh(); if (readerScroll) readerScroll(); };
+  // the text size and the colours are a reader's own: when they were last chosen goes with them, so the newest choice wins on every device (fromAccount: brought by it)
+  const prefsTouched = () => { try { localStorage.setItem("divyarann-prefs-t", Date.now()); } catch (e) {} changed(); };
+  const setRs = (v, fromAccount) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (!fromAccount) prefsTouched(); if (ST) ST.refresh(); if (readerScroll) readerScroll(); };
   $("#aMinus").addEventListener("click", () => setRs(rs - 1)); $("#aPlus").addEventListener("click", () => setRs(rs + 1));
 
   // ---------- small things ----------
@@ -867,12 +875,14 @@
   }
   menuBtn.addEventListener("click", () => { const open = !root.classList.contains("menu-open"); root.classList.toggle("menu-open", open); menuBtn.setAttribute("aria-expanded", String(open)); $("#menu").setAttribute("aria-hidden", String(!open)); $("#menu").inert = !open; sound.tick(); if (lenis) open ? lenis.stop() : lenis.start(); if (window.DVGL) window.DVGL.menu(open); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
-  document.querySelectorAll(".pal button").forEach((b) => b.addEventListener("click", () => {
-    const p = b.dataset.p; if ((root.getAttribute("data-palette") || "akash") === p) return;
+  function setPalette(p, fromAccount) {
+    if ((root.getAttribute("data-palette") || "akash") === p) return;
     if (window.DVGL) window.DVGL.eclipse();
     setTimeout(() => { if (p === "grahan") root.setAttribute("data-palette", "grahan"); else root.removeAttribute("data-palette"); }, 350);
-    document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); try { localStorage.setItem("divyarann-palette", p); } catch (e) {} sound.tick();
-  }));
+    document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === p))); try { localStorage.setItem("divyarann-palette", p); } catch (e) {}
+    if (!fromAccount) { prefsTouched(); sound.tick(); }
+  }
+  document.querySelectorAll(".pal button").forEach((b) => b.addEventListener("click", () => setPalette(b.dataset.p)));
   if (root.getAttribute("data-palette") === "grahan") document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === "grahan")));
   $("#sndBtn").addEventListener("click", () => sound.set(!sound.on));
 
@@ -943,6 +953,291 @@
   holdBtn.addEventListener("pointerdown", startHold); ["pointerup", "pointerleave", "pointercancel"].forEach((t) => holdBtn.addEventListener(t, stopHold));
   holdBtn.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") enter(true); });
   $("#holdSkip").addEventListener("click", () => enter(false));
+
+  // ---------- reader accounts (2026-10-25, the user's request): signing in keeps a reader's chapters, bookmarks, text size and colours in their account
+  //            (Firebase, project divyarann-site, the free plan), so they follow them to any device; a guest reads on this device alone, as before.
+  //            Google's code loads only when someone signs in, or has signed in on this device before. A verified address is asked onto the chapter
+  //            emails once per account (Kit sends its own confirmation). Without config.json "accounts" none of this shows ----------
+  const acct = (() => {
+    const A = C.accounts, CHOICE = "divyarann-acct";
+    const ls = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} } };
+    const menuRow = $("#menuAcct");
+    if (!A) { if (menuRow) menuRow.remove(); return { nudge: () => "", open() {}, state: () => ({ on: false }) }; }
+    const choice = () => ls.get(CHOICE);   // "user" (signed in on this device), "guest" (chose to read here alone), or nothing yet
+    // in-app browsers (Instagram's, Facebook's) are refused by Google's sign-in window: there, email and password, or the real browser
+    const inApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|; wv\)|Snapchat|musical_ly|TikTok/i.test(navigator.userAgent);
+    let fb = null, loading = null, user = null, rec = null, busy = false, again = false, pushT = 0, applying = false, lastSync = 0, state = "";
+
+    // ---- what follows a reader between devices, as one small record ----
+    const sorted = (o) => (o && typeof o === "object" && !Array.isArray(o)) ? Object.keys(o).sort().reduce((a, k) => (a[k] = sorted(o[k]), a), {}) : o;
+    const same = (a, b) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
+    function here() {
+      const read = {}, bookmarks = {};
+      for (const k in P.read) read[k] = +P.read[k] || 1;
+      for (const k in BMG) bookmarks[k] = { gone: true, t: +BMG[k] || 0 };
+      for (const k in BM) bookmarks[k] = BM[k];
+      return { v: 1, read, reset: +P.reset || 0, bookmarks, prefs: { size: rs, palette: root.getAttribute("data-palette") || "akash", t: +ls.get("divyarann-prefs-t") || 0 } };
+    }
+    // a: this device, b: the account. The later "read up to" set by hand wins, then every chapter finished after it on either side; each chapter's newest
+    // bookmark (or its removal) wins; the newest choice of text size and colours wins
+    function merge(a, b) {
+      const [base, other] = (+b.reset || 0) > (+a.reset || 0) ? [b, a] : [a, b], reset = +base.reset || 0;
+      const read = Object.assign({}, base.read || {});
+      for (const k in other.read || {}) { const t = +other.read[k] || 1; if (!reset || t > reset) read[k] = read[k] ? Math.min(+read[k], t) : t; }
+      const bookmarks = {};
+      for (const k of new Set([...Object.keys(a.bookmarks || {}), ...Object.keys(b.bookmarks || {})])) {
+        const x = (a.bookmarks || {})[k], y = (b.bookmarks || {})[k];
+        bookmarks[k] = !x ? y : !y ? x : (+y.t || 0) > (+x.t || 0) ? y : x;
+      }
+      const prefs = ((b.prefs || {}).t || 0) > ((a.prefs || {}).t || 0) ? b.prefs : (a.prefs || b.prefs);
+      const out = { v: 1, read, reset, bookmarks, prefs };
+      if (a.kit || b.kit) out.kit = a.kit || b.kit;
+      return out;
+    }
+    // the merged record becomes this device's: true if anything a reader can see changed
+    function apply(r) {
+      const before = JSON.stringify([P.read, BM, rs, root.getAttribute("data-palette") || "akash"]);
+      applying = true;
+      P.read = {}; for (const k in r.read || {}) P.read[k] = r.read[k]; P.reset = r.reset || 0; P.demo = 0;
+      for (const k in BM) delete BM[k]; for (const k in BMG) delete BMG[k];
+      for (const k in r.bookmarks || {}) { const b = r.bookmarks[k]; if (!b) continue; if (b.gone) BMG[k] = b.t; else BM[k] = b; }
+      save(); bmSave();
+      const pr = r.prefs || {};
+      if (pr.t) ls.set("divyarann-prefs-t", String(pr.t));
+      if (pr.size && pr.size !== rs) setRs(+pr.size, true);
+      if (pr.palette && pr.palette !== (root.getAttribute("data-palette") || "akash")) setPalette(pr.palette, true);
+      applying = false;
+      return before !== JSON.stringify([P.read, BM, rs, pr.palette || root.getAttribute("data-palette") || "akash"]);
+    }
+    // the page shows what came from the account (a chapter keeps its place: only the count and the wheel follow there)
+    function refresh() { updateCount(); fire(); if (current && current.name !== "reader") rerender(); }
+
+    // ---- Firebase, loaded on demand ----
+    function load() {
+      if (loading) return loading;
+      const base = `https://www.gstatic.com/firebasejs/${A.sdk}/`;
+      loading = Promise.all(["firebase-app", "firebase-auth", "firebase-firestore-lite"].map((m) => import(base + m + ".js"))).then(([app, auth, fs]) => {
+        const a = app.initializeApp(A.firebase), au = auth.getAuth(a); au.languageCode = "en";
+        fb = { auth, fs, au, db: fs.getFirestore(a) };
+        auth.onAuthStateChanged(au, signedIn);
+        return fb;
+      }).catch((e) => { loading = null; throw e; });
+      return loading;
+    }
+    const docRef = () => fb.fs.doc(fb.db, "readers", user.uid);
+    const write = (r) => fb.fs.setDoc(docRef(), Object.assign({}, r, { updated: fb.fs.serverTimestamp() }));
+    // read the account, merge it with this device, keep the result in both places. Out of reach (offline, or the free plan's day used up): this device
+    // keeps everything and the next change, or the next return to the tab, tries again
+    async function sync() {
+      if (!user || !fb) return;
+      if (busy) { again = true; return; }
+      busy = true; clearTimeout(pushT);
+      try {
+        const snap = await fb.fs.getDoc(docRef()), remote = snap.exists() ? snap.data() : {};
+        delete remote.updated;
+        const m = merge(here(), remote), moved = apply(m);
+        if (!snap.exists() || !same(remote, m)) await write(m);
+        rec = m; lastSync = Date.now(); state = "saved";
+        if (moved) refresh();
+        await askKit();
+      } catch (e) { state = "unreachable"; }
+      busy = false; paint();
+      if (again) { again = false; soon(800); }
+    }
+    function soon(ms) { if (!user) return; clearTimeout(pushT); pushT = setTimeout(sync, ms == null ? 2500 : ms); }
+    synced = () => { if (!applying && user) soon(); };
+    document.addEventListener("visibilitychange", () => {
+      if (!user) return;
+      if (document.visibilityState === "hidden" && pushT) sync();   // leaving with a change not yet saved
+      else if (document.visibilityState === "visible" && Date.now() - lastSync > 60000) sync();   // back from reading elsewhere
+    });
+    // the chapter emails: once per account, for an address its owner has shown is theirs (Google's are; an email sign-up's after its link is opened)
+    async function askKit() {
+      if (!user || !user.email || !user.emailVerified || !C.newsletter || !rec || rec.kit) return;
+      try {
+        const body = new URLSearchParams(); body.set(C.newsletter.field, user.email);
+        await fetch(C.newsletter.action, { method: "POST", mode: "no-cors", body });
+        rec = Object.assign({}, rec, { kit: Date.now() }); await write(rec);
+      } catch (e) {}
+    }
+    function signedIn(u) {
+      const was = !!user; user = u || null;
+      if (user) { ls.set(CHOICE, "user"); ask.hide(); sync(); }
+      else { rec = null; state = ""; if (choice() === "user") ls.set(CHOICE, "guest"); if (was) refresh(); }
+      paint();
+    }
+
+    // ---- the account window ----
+    const G = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+    const win = document.createElement("div");
+    win.className = "acct"; win.id = "acct"; win.hidden = true;
+    win.setAttribute("role", "dialog"); win.setAttribute("aria-modal", "true"); win.setAttribute("aria-labelledby", "acctT");
+    win.innerHTML = `<div class="acct-in">
+      <button type="button" class="acct-x" data-close aria-label="Close">×</button>
+      <div class="acct-out">
+        <p class="kicker"><span>Your account</span></p>
+        <h2 id="acctT">Sign in to save your progress on multiple devices</h2>
+        <p class="acct-lead">Your chapters, bookmarks and settings follow you to any phone or computer you sign in on.</p>
+        <button type="button" class="acct-g" id="acG">${G}<span>Continue with Google</span></button>
+        <p class="acct-note" id="acInApp" hidden>Google sign-in does not open inside this app. Sign in with email below, or open divyarann.com in your browser.</p>
+        <p class="acct-or"><span>or with email</span></p>
+        <form class="acct-form" id="acForm" novalidate>
+          <label for="acEmail">Email</label><input id="acEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false">
+          <label for="acPass">Password</label><input id="acPass" type="password" autocomplete="current-password">
+          <div class="acct-row"><button type="submit" class="cta" id="acIn">Sign in</button><button type="button" class="cta ghost" id="acNew">Create account</button></div>
+          <button type="button" class="acct-link" id="acForgot">Forgot your password?</button>
+        </form>
+        <p class="acct-msg" id="acMsg" role="status" aria-live="polite"></p>
+        <p class="acct-fine">Signing in also brings you one email when each new chapter is released: Kit, the mail service, asks you to confirm first, and every email has a one-click unsubscribe. <a href="/about/">Privacy</a></p>
+        <p class="acct-guest-row"><button type="button" class="acct-guest" data-guest>Continue as a guest</button><span>and read on this device only</span></p>
+      </div>
+      <div class="acct-on" hidden>
+        <p class="kicker"><span>Your account</span></p>
+        <h2>Signed in</h2>
+        <p class="acct-who" id="acWho"></p>
+        <p class="acct-state" id="acState"></p>
+        <p class="acct-note" id="acVerify" hidden>Open the link we emailed you to confirm your address, and the chapter emails will follow. <button type="button" class="acct-link" id="acResend">Send it again</button></p>
+        <div class="acct-row"><button type="button" class="cta ghost" id="acOut">Sign out</button></div>
+        <button type="button" class="acct-link acct-del" id="acDel">Delete my account</button>
+        <div class="acct-confirm" id="acConfirm" hidden><p>This deletes your account and the progress saved in it. What is on this device stays.</p>
+          <div class="acct-row"><button type="button" class="cta" id="acDelYes">Delete it</button><button type="button" class="cta ghost" id="acDelNo">Keep it</button></div></div>
+        <p class="acct-msg" id="acMsg2" role="status" aria-live="polite"></p>
+      </div></div>`;
+    document.body.appendChild(win);
+    const q = (s) => win.querySelector(s);
+    const say = (m) => { (user ? q("#acMsg2") : q("#acMsg")).textContent = m || ""; };
+    const WHY = {
+      "auth/invalid-credential": "That email and password do not match. Check both, or use Forgot your password.",
+      "auth/wrong-password": "That email and password do not match. Check both, or use Forgot your password.",
+      "auth/user-not-found": "That email and password do not match. Check both, or use Forgot your password.",
+      "auth/invalid-email": "That email address does not look right.",
+      "auth/missing-password": "Enter your password.",
+      "auth/email-already-in-use": "There is already an account with that email. Sign in instead, or continue with Google if you made it that way.",
+      "auth/weak-password": "Use a longer password: at least 8 characters.",
+      "auth/too-many-requests": "Too many tries for now. Wait a few minutes, then try again.",
+      "auth/network-request-failed": "No connection. Check your internet and try again.",
+      "auth/popup-blocked": "Your browser blocked the Google window. Allow pop-ups for divyarann.com, or sign in with email.",
+      "auth/account-exists-with-different-credential": "That email already has an account. Sign in the way you made it.",
+      "auth/requires-recent-login": "For your safety, sign out and sign in again, then delete your account.",
+      "auth/quota-exceeded": "Sign-in is busy today. Please try again tomorrow; your progress stays on this device.",
+      "auth/operation-not-allowed": "That way of signing in is not available yet.",
+    };
+    const why = (e) => WHY[e && e.code] || "Something went wrong. Please try again.";
+    let opener = null;
+    function open() {
+      opener = document.activeElement; closeMenu(); ask.hide();
+      paint(); say(""); win.hidden = false; root.classList.add("acct-open"); if (lenis) lenis.stop();
+      requestAnimationFrame(() => { win.classList.add("show"); const f = user ? q("#acOut") : (inApp ? q("#acEmail") : q("#acG")); if (f) f.focus(); });
+      if (!user) load().catch(() => {});   // the code is ready by the time they choose
+    }
+    function close() {
+      if (win.hidden) return;
+      win.classList.remove("show"); root.classList.remove("acct-open"); if (lenis) lenis.start();
+      setTimeout(() => { win.hidden = true; q("#acConfirm").hidden = true; }, reduced() ? 0 : 300);
+      if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+    }
+    function guest() { ls.set(CHOICE, "guest"); close(); ask.hide(); paint(); }
+    win.addEventListener("click", (e) => { if (e.target === win || e.target.closest("[data-close]")) close(); else if (e.target.closest("[data-guest]")) guest(); });
+    win.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); close(); return; }
+      if (e.key !== "Tab") return;   // the window keeps the keyboard while it is open
+      const fs = [...win.querySelectorAll("button, input, a[href]")].filter((el) => el.offsetParent !== null && !el.disabled);
+      if (!fs.length) return; const first = fs[0], last = fs[fs.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+    const welcome = () => { close(); toast("Signed in · your progress is saved to your account", 3600); };
+    q("#acG").addEventListener("click", async () => {
+      if (inApp) { say(q("#acInApp").textContent); return; }
+      say("Opening Google…");
+      try {
+        await load(); const p = new fb.auth.GoogleAuthProvider(); p.setCustomParameters({ prompt: "select_account" });
+        await fb.auth.signInWithPopup(fb.au, p); welcome();
+      } catch (e) { say(e && (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") ? "" : why(e)); }
+    });
+    async function byEmail(create) {
+      const em = q("#acEmail").value.trim(), pw = q("#acPass").value;
+      if (!em) { say("Enter your email address."); q("#acEmail").focus(); return; }
+      if (!pw) { say(create ? "Choose a password: at least 8 characters." : "Enter your password."); q("#acPass").focus(); return; }
+      if (create && pw.length < 8) { say("Use a longer password: at least 8 characters."); q("#acPass").focus(); return; }
+      say(create ? "Making your account…" : "Signing in…");
+      try {
+        await load();
+        if (create) {
+          const cr = await fb.auth.createUserWithEmailAndPassword(fb.au, em, pw);
+          try { await fb.auth.sendEmailVerification(cr.user, { url: location.origin + "/" }); } catch (e) {}
+          close(); toast(`Account made · open the link sent to ${em} to confirm it`, 6000);
+        } else { await fb.auth.signInWithEmailAndPassword(fb.au, em, pw); welcome(); }
+      } catch (e) { say(why(e)); }
+    }
+    q("#acForm").addEventListener("submit", (e) => { e.preventDefault(); byEmail(false); });
+    q("#acNew").addEventListener("click", () => byEmail(true));
+    q("#acForgot").addEventListener("click", async () => {
+      const em = q("#acEmail").value.trim();
+      if (!em) { say("Type your email address above, then choose Forgot your password again."); q("#acEmail").focus(); return; }
+      try { await load(); await fb.auth.sendPasswordResetEmail(fb.au, em, { url: location.origin + "/" }); say(`If there is an account for ${em}, a link to choose a new password is on its way.`); }
+      catch (e) { say(why(e)); }
+    });
+    q("#acResend").addEventListener("click", async () => { try { await fb.auth.sendEmailVerification(user, { url: location.origin + "/" }); say("Sent. Look in your inbox, and in Promotions or Spam."); } catch (e) { say(why(e)); } });
+    q("#acOut").addEventListener("click", async () => {
+      try { if (pushT) await sync(); await fb.auth.signOut(fb.au); ls.set(CHOICE, "guest"); close(); toast("Signed out · your progress stays on this device too", 3600); }
+      catch (e) { say(why(e)); }
+    });
+    q("#acDel").addEventListener("click", () => { q("#acConfirm").hidden = false; q("#acDelNo").focus(); });
+    q("#acDelNo").addEventListener("click", () => { q("#acConfirm").hidden = true; q("#acDel").focus(); });
+    q("#acDelYes").addEventListener("click", async () => {
+      try { say("Deleting…"); await fb.fs.deleteDoc(docRef()); await fb.auth.deleteUser(user); ls.set(CHOICE, "guest"); close(); toast("Your account is deleted · your progress stays on this device", 4200); }
+      catch (e) { say(why(e)); }
+    });
+    // on the next return, a reader who made their account by email may have opened the link since
+    window.addEventListener("focus", () => { if (user && !user.emailVerified && user.providerData.some((p) => p.providerId === "password")) user.reload().then(() => { if (user && user.emailVerified) { paint(); askKit(); } }).catch(() => {}); });
+
+    // ---- the small choice at the threshold: once, skippable, never in the way ----
+    const ask = (() => {
+      const el = document.createElement("aside");
+      el.className = "acct-ask"; el.id = "acctAsk"; el.hidden = true; el.setAttribute("aria-label", "Save your progress");
+      el.innerHTML = `<p class="acct-ask-t">Sign in to save your progress on multiple devices</p>
+        <div class="acct-row"><button type="button" class="cta" id="askIn">Sign in</button><button type="button" class="acct-guest" data-guest>Continue as a guest</button></div>
+        <button type="button" class="acct-x" data-guest aria-label="Not now, continue as a guest">×</button>`;
+      document.body.appendChild(el);
+      let t = 0;
+      el.addEventListener("click", (e) => { if (e.target.closest("#askIn")) open(); else if (e.target.closest("[data-guest]")) guest(); });
+      const due = () => !user && !choice() && current && current.name === "home" && !root.classList.contains("is-intro") && win.hidden;
+      function maybe() {
+        if (!due()) { clearTimeout(t); t = 0; return; }
+        if (t || !el.hidden) return;
+        t = setTimeout(() => { t = 0; if (!due()) return; el.hidden = false; requestAnimationFrame(() => el.classList.add("show")); }, 1600);
+      }
+      function hide() { clearTimeout(t); t = 0; if (el.hidden) return; el.classList.remove("show"); setTimeout(() => { if (!el.classList.contains("show")) el.hidden = true; }, reduced() ? 0 : 400); }
+      // it waits for the threshold to be passed (a first visit's opening act, or a return's glance)
+      if (root.classList.contains("is-intro")) { const mo = new MutationObserver(() => { if (!root.classList.contains("is-intro")) { mo.disconnect(); maybe(); } }); mo.observe(root, { attributes: true, attributeFilter: ["class"] }); }
+      return { maybe, hide };
+    })();
+
+    // ---- everything that shows who is signed in ----
+    function paint() {
+      const on = !!user, verified = on && (user.emailVerified || !user.providerData.some((p) => p.providerId === "password"));
+      q(".acct-out").hidden = on; q(".acct-on").hidden = !on;
+      q("#acInApp").hidden = !inApp; q("#acG").classList.toggle("is-off", inApp);
+      if (on) {
+        q("#acWho").textContent = user.displayName ? `${user.displayName} · ${user.email || ""}` : user.email || "";
+        q("#acState").textContent = state === "unreachable" ? "Your account could not be reached just now. Everything is kept on this device, and it will be saved when the connection returns." : "Your chapters, bookmarks and settings are saved to your account.";
+        q("#acVerify").hidden = verified;
+      }
+      if (menuRow) { const b = menuRow.querySelector("button"); b.textContent = on ? "Your account" : "Sign in"; menuRow.querySelector(".menu-acct-who").textContent = on ? (user.email || "") : "Save your progress on every device"; }
+      view.querySelectorAll(".acct-nudge").forEach((n) => { n.hidden = on || choice() === "user"; });
+    }
+    if (menuRow) { menuRow.hidden = false; menuRow.querySelector("button").addEventListener("click", open); }
+    document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-acct]")) { e.preventDefault(); open(); } });
+    window.addEventListener("dvr:route", () => { ask.hide(); ask.maybe(); paint(); });
+    if (choice() === "user") load().catch(() => {});   // signed in here before: the session comes back on its own
+    return {
+      // the end of a chapter, for a guest
+      nudge: () => `<div class="acct-nudge"${choice() === "user" || user ? " hidden" : ""}><p>Reading on more than one device? <button type="button" class="acct-link" data-acct>Sign in</button> and your place, bookmarks and lit points follow you.</p></div>`,
+      open,
+      state: () => ({ on: true, user: !!user, choice: choice(), loaded: !!fb, sync: state, inApp }),
+    };
+  })();
+  window.DVAcct = acct;
 
   if (/[?&]perf=1/.test(location.search)) {
     const pv = document.createElement("pre"); pv.className = "perf-hud"; document.body.appendChild(pv);
