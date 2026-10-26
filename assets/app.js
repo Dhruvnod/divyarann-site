@@ -896,7 +896,9 @@
   function setPalette(p, fromAccount) {
     if ((root.getAttribute("data-palette") || "akash") === p) return;
     if (window.DVGL) window.DVGL.eclipse();
-    setTimeout(() => { if (p === "grahan") root.setAttribute("data-palette", "grahan"); else root.removeAttribute("data-palette"); }, 350);
+    // the colours change in one step behind the wheel's eclipse: with the page's colour transitions left on, about seventy elements each animated
+    // their own colours frame by frame (a slow phone dropped frames for two seconds, 2026-10-26)
+    setTimeout(() => { root.classList.add("pal-switching"); if (p === "grahan") root.setAttribute("data-palette", "grahan"); else root.removeAttribute("data-palette"); requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("pal-switching"))); }, 350);
     document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === p))); try { localStorage.setItem("divyarann-palette", p); } catch (e) {}
     if (!fromAccount) { prefsTouched(); sound.tick(); }
   }
@@ -1246,7 +1248,13 @@
     if (menuRow) { menuRow.hidden = false; menuRow.querySelector("button").addEventListener("click", open); }
     document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-acct]")) { e.preventDefault(); open(); } });
     window.addEventListener("dvr:route", () => { ask.hide(); ask.maybe(); paint(); });
-    if (choice() === "user") load().catch(() => {});   // signed in here before: the session comes back on its own
+    // signed in here before: the session comes back on its own, once the page has opened and is quiet (Google's code is about 400 KB, and parsing it
+    // during the threshold and the wheel's opening froze a slow phone for most of a second, 2026-10-26)
+    if (choice() === "user") {
+      const later = () => load().catch(() => {});
+      const quiet = () => ("requestIdleCallback" in window ? requestIdleCallback(later, { timeout: 4000 }) : setTimeout(later, 1500));
+      if (document.readyState === "complete") setTimeout(quiet, 1200); else window.addEventListener("load", () => setTimeout(quiet, 1200), { once: true });
+    }
     return {
       // the end of a chapter, for a guest
       nudge: () => `<div class="acct-nudge"${choice() === "user" || user ? " hidden" : ""}><p>Reading on more than one device? <button type="button" class="acct-link" data-acct>Sign in</button> and your place, bookmarks and lit points follow you.</p></div>`,

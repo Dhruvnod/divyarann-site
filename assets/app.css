@@ -28,6 +28,7 @@ html.lenis, html.lenis body { height: auto; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 [hidden] { display: none !important; }
+.pal-switching, .pal-switching *, .pal-switching *::before, .pal-switching *::after { transition: none !important; }   /* the colour switch lands in one step (setPalette) */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }   /* 2px, not a hairline: it has to be seen on the black from across a room; keyboard use only (:focus-visible), the shape follows the control */
 #view:focus { outline: 0; }   /* the page takes focus when it changes or when Skip is used: no ring round the whole page */
 ::selection { background: var(--accent); color: var(--ink); }
