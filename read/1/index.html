@@ -29,35 +29,39 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+Devanagari:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Source+Serif+4:ital,wght@0,400;1,400&family=Tiro+Devanagari+Hindi&family=Instrument+Sans:wght@400..500&display=swap">
 <script>(function(){var d=document.documentElement;try{var p=localStorage.getItem("divyarann-palette");if(p==="grahan")d.setAttribute("data-palette","grahan");if(localStorage.getItem("divyarann-seen"))d.classList.add("returning");}catch(e){}var q=/[?&]palette=(akash|grahan)/.exec(location.search);if(q){try{localStorage.setItem("divyarann-palette",q[1]);}catch(e){}if(q[1]==="grahan")d.setAttribute("data-palette","grahan");else d.removeAttribute("data-palette");}if(/[?&]still=1/.test(location.search))d.classList.add("dv-still","returning");if(navigator.maxTouchPoints>0&&Math.min(screen.width,screen.height)<820)d.classList.add("dv-touch");var bot=/bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|embedly|preview/i.test(navigator.userAgent);if(bot)d.classList.add("returning");d.classList.add("js");if(!bot)d.classList.add("is-intro");setTimeout(function(){if(!window.DVRoute){d.classList.remove("is-intro");var i=document.getElementById("intro");if(i)i.style.display="none";}},6000);})();</script>
 
-<link rel="stylesheet" href="/assets/app.css?v=3faf963a69">
+<link rel="stylesheet" href="/assets/app.css?v=916181b575">
 <script>window.goatcounter = { no_onload: true };</script>
 <script data-goatcounter="https://divyarann.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
+<a class="skip" id="skip" href="#view">Skip to the page</a>
 <header class="bar" id="bar">
   <a class="mark" href="/" aria-label="Divyarann, home">Divyarann</a>
   <div class="bar-r">
-    <span class="lit-count" id="litCount" aria-live="polite"><b>00</b> / 18 lit</span>
-    <span class="reader-tools" role="group" aria-label="Text size"><button type="button" id="aMinus" aria-label="Smaller text">A−</button><button type="button" id="aPlus" aria-label="Larger text">A+</button></span>
-    <span class="pal" role="group" aria-label="Colours"><button type="button" data-p="akash" aria-pressed="true" aria-label="Akash colours" title="Akash"></button><button type="button" data-p="grahan" aria-pressed="false" aria-label="Grahan colours" title="Grahan"></button></span>
-    <button type="button" class="snd" id="sndBtn" aria-pressed="false" aria-label="Sound" title="Sound"><i></i><i></i><i></i><i></i></button>
-    <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu"><span>Menu</span><span class="lines" aria-hidden="true"><i></i><i></i></span></button>
+    <a class="lit-count" id="litCount" href="/read/" title="Each chapter you read lights a point on the wheel. Open the chapters."><svg class="lit-ring" id="litRing" viewBox="-12 -12 24 24" aria-hidden="true"><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(0)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(20)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(40)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(60)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(80)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(100)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(120)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(140)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(160)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(180)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(200)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(220)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(240)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(260)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(280)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(300)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(320)"/><line x1="0" y1="-6" x2="0" y2="-10.5" transform="rotate(340)"/></svg><span class="lit-t" aria-live="polite"><b>00</b><span class="lit-of"> / 18 lit</span></span></a>
+    <button type="button" class="tools-btn" id="toolsBtn" aria-expanded="false" aria-controls="barTools" aria-label="Display: text size, colours and sound" title="Display"><span aria-hidden="true">Aa</span></button>
+    <div class="bar-tools" id="barTools" role="group" aria-label="Display">
+      <span class="bt reader-tools" role="group" aria-label="Text size"><span class="bt-k">Text</span><span class="bt-v"><button type="button" id="aMinus" aria-label="Smaller text" title="Smaller text">A&minus;</button><button type="button" id="aPlus" aria-label="Larger text" title="Larger text">A+</button></span></span>
+      <span class="bt pal" role="group" aria-label="Colours"><span class="bt-k">Colours</span><span class="bt-v"><button type="button" data-p="akash" aria-pressed="true" aria-label="Akash colours" title="Akash: violet"><i class="sw"></i><span class="pn">Akash</span></button><button type="button" data-p="grahan" aria-pressed="false" aria-label="Grahan colours" title="Grahan: eclipse gold"><i class="sw"></i><span class="pn">Grahan</span></button></span></span>
+      <span class="bt snd-row"><span class="bt-k">Sound</span><span class="bt-v"><button type="button" class="snd" id="sndBtn" aria-pressed="false" aria-label="Sound" title="Sound: a tanpura drone, off until you turn it on"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="sp" d="M4 9.5h3.6L12.5 5.5v13L7.6 14.5H4z"/><path class="w w1" d="M15.6 9.4a3.8 3.8 0 0 1 0 5.2"/><path class="w w2" d="M18.2 6.8a7.5 7.5 0 0 1 0 10.4"/><path class="x" d="M16 9.5l4.5 5M20.5 9.5l-4.5 5"/></svg><span class="snd-t"></span></button></span></span>
+    </div>
+    <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu"><span class="mb-t">Menu</span><span class="lines" aria-hidden="true"><i></i><i></i></span></button>
   </div>
 </header>
 
 <nav class="menu" id="menu" aria-label="Pages" aria-hidden="true" inert>
   <ol>
-    <li><a href="/" data-route="home"><small>01</small>Threshold <span class="dv" lang="hi">द्वार</span></a></li>
-    <li><a href="/read/" data-route="contents"><small>02</small>Chapters <span class="dv" lang="hi">अध्याय</span></a></li>
-    <li><a href="/codex/" data-route="codex"><small>03</small>Codex <span class="dv" lang="hi">कोश</span></a></li>
-    <li><a href="/story/" data-route="story"><small>04</small>The Story <span class="dv" lang="hi">कथा</span></a></li>
-    <li><a href="/tears/" data-route="tears"><small>05</small>The Tears <span class="dv" lang="hi">दरार</span></a></li>
-    <li><a href="/powers/" data-route="powers"><small>06</small>Powers <span class="dv" lang="hi">शक्ति</span></a></li>
-    <li><a href="/about/" data-route="about"><small>07</small>About</a></li>
-    <li><a href="/author/" data-route="author"><small>08</small>The Author</a></li>
+    <li><a href="/" data-route="home">Threshold <span class="dv" lang="hi">द्वार</span></a></li>
+    <li><a href="/read/" data-route="contents">Chapters <span class="dv" lang="hi">अध्याय</span></a></li>
+    <li><a href="/codex/" data-route="codex">Codex <span class="dv" lang="hi">कोश</span></a></li>
+    <li><a href="/story/" data-route="story">The Story <span class="dv" lang="hi">कथा</span></a></li>
+    <li><a href="/tears/" data-route="tears">The Tears <span class="dv" lang="hi">दरार</span></a></li>
+    <li><a href="/powers/" data-route="powers">Powers <span class="dv" lang="hi">शक्ति</span></a></li>
+    <li><a href="/about/" data-route="about">About</a></li>
+    <li><a href="/author/" data-route="author">The Author</a></li>
   </ol>
   <div class="menu-acct" id="menuAcct" hidden><button type="button" class="menu-acct-btn">Sign in</button><span class="menu-acct-who">Save your progress on every device</span></div>
 </nav>
@@ -305,7 +309,7 @@
 <div class="intro" id="intro" aria-live="polite">
   <svg class="intro-line" viewBox="-20 0 80 1000" preserveAspectRatio="none" aria-hidden="true"><path/></svg>
   <div class="intro-count"><b id="introNum">00</b><span id="introLabel">of 18 lit</span></div>
-  <div class="intro-word">Divyarann<br>Book One · Vinash</div>
+  <div class="intro-word">Divyarann</div>
   <div class="hold" id="hold">
     <button type="button" class="hold-btn" id="holdBtn" aria-label="Hold to enter, with sound"><svg viewBox="0 0 86 86"><circle class="bg" cx="43" cy="43" r="42"/><circle class="fg" cx="43" cy="43" r="42"/></svg><span>Hold</span></button>
     <button type="button" class="hold-skip" id="holdSkip">Enter in silence</button>
@@ -316,11 +320,11 @@
 <div class="toast" id="toast" role="status"></div>
 <div class="pop" id="pop" role="tooltip"></div>
 
-<script src="/assets/content.js?v=3faf963a69"></script>
+<script src="/assets/content.js?v=916181b575"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
-<script src="/assets/app.js?v=3faf963a69"></script>
-<script src="/assets/wheel.js?v=3faf963a69"></script>
+<script src="/assets/app.js?v=916181b575"></script>
+<script src="/assets/wheel.js?v=916181b575"></script>
 </body>
 </html>

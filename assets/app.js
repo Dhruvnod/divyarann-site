@@ -73,7 +73,11 @@
   const bmSave = () => { try { localStorage.setItem(BKEY, JSON.stringify(BM)); localStorage.setItem("divyarann-bmgone", JSON.stringify(BMG)); } catch (e) {} changed(); };
   // a bookmark left after the last chapter they finished is where they stopped reading
   const bmBack = () => { let last = 0, best = 0; for (const k in P.read) last = Math.max(last, +P.read[k] || 0); for (const k in BM) if (chap(+k) && BM[k].t > last && (!best || BM[k].t > BM[best].t)) best = +k; return best; };
-  function updateCount() { const n = DVR.reached(); const el = $("#litCount b"); if (el) el.textContent = pad(n); }
+  function updateCount() {
+    const n = DVR.reached(), el = $("#litCount b"); if (el) el.textContent = pad(n);
+    document.querySelectorAll("#litRing line").forEach((l, i) => l.classList.toggle("on", i < n));   // the bar's ring of eighteen ticks: one lit for every chapter read
+    const a = $("#litCount"); if (a) a.setAttribute("aria-label", `${pad(n)} / 18 lit. Each chapter you read lights a point on the wheel. Open the chapters.`);
+  }
   window.addEventListener("dvr:progress", updateCount);
 
   // ---------- pages ----------
@@ -90,7 +94,7 @@
       <p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.support ? `<a href="${esc(C.support.url)}" rel="noopener">${esc(C.support.label || "Support the author")}</a>` : ""}${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
   const follow = () => {
     const nl = C.newsletter, insta = C.instagram, handle = insta ? insta.replace(/\/+$/, "").split("/").pop() : "";
-    return `<section class="section follow"><p class="kicker"><span>New chapters</span></p><h2>Be told when the next tear opens</h2>
+    return `<section class="section follow"><h2>Be told when the next tear opens</h2>
       <p class="follow-lead">${esc(C.nextLead || "")}</p>
       ${nl ? `<form class="follow-form" action="${esc(nl.action)}" method="post"><label class="visually-hidden" for="em">Email address</label><input id="em" type="email" name="${esc(nl.field)}" placeholder="Your email" autocomplete="email" required><button type="submit">Get each chapter</button></form>
       <p class="fine">One email when a chapter is released, nothing else. The list is kept by Kit, the mail service; every email has a one-click unsubscribe.</p>` : ""}
@@ -113,31 +117,29 @@
       <section class="hero" data-gl="hero">
         <div class="hero-wheel" data-wheel>${fallbackWheel()}</div>
         <div class="hero-type">
-          <div class="hero-sub"><p class="kicker"><span>Book One</span><span>Vinash</span></p><p class="title-deva" lang="hi">दिव्यारण</p></div>
+          <div class="hero-sub"><p class="title-deva" lang="hi">दिव्यारण</p></div>
           <h1 class="title" aria-label="Divyarann">${"Divyarann".split("").map((ch, i) => `<span style="--i:${i}" aria-hidden="true">${ch}</span>`).join("")}</h1>
         </div>
-        <span class="scroll-cue" aria-hidden="true">Scroll</span>
       </section>
       <section class="section premise" data-scene="hero">
-        <p class="kicker"><span>Seven tears</span><span>One above Dwarka</span></p>
         <p class="premise-text" data-lines data-hush>${esc(C.lede)}</p>
-        <div class="cta-row" data-hush><a class="cta" href="/read/${back || begin}/">${back ? "Your bookmark · Chapter " + WORDS[back] : r === 0 ? "Begin · Chapter One" : r >= C.released ? "Read again · Chapter One" : "Continue · Chapter " + WORDS[begin]}</a><a class="cta ghost" href="/read/">All chapters</a></div>
+        <div class="cta-row" data-hush><a class="cta" href="/read/${back || begin}/">${back ? "Your bookmark, Chapter " + WORDS[back] : r === 0 ? "Begin Chapter One" : r >= C.released ? "Read again from Chapter One" : "Continue with Chapter " + WORDS[begin]}</a><a class="cta ghost" href="/read/">All chapters</a></div>
         <p class="nogl-note fine" style="margin-top:28px">The sky would not open on this device. The story is all here.</p>
       </section>
       <section class="section index" data-scene="index">
-        <header class="sec-head" data-hush><p class="kicker"><span>Book One so far</span><span>${C.released} of 26</span></p><h2>The chapters</h2></header>
+        <header class="sec-head" data-hush><p class="kicker"><span>${C.released} of 26 chapters out</span></p><h2>The chapters</h2></header>
         <ol class="ix">${rows}${locked}</ol>
       </section></div>
       <section class="section four" data-scene="four">
-        <header class="sec-head"><p class="kicker"><span>Under the Dwarka tear</span></p><h2>Four ordinary people</h2></header>
-        <div class="four-grid">${C.cards.map((k, i) => `<a class="four-card" href="/codex/"><span class="four-n">${pad(i + 1)}</span><span class="four-name">${esc(k.name)}</span><span class="four-line">${esc(k.line)}</span></a>`).join("")}</div>
+        <header class="sec-head"><h2>Four ordinary people</h2></header>
+        <div class="four-grid">${C.cards.map((k) => `<a class="four-card" href="/codex/"><span class="four-name">${esc(k.name)}</span><span class="four-line">${esc(k.line)}</span></a>`).join("")}</div>
       </section>
       ${follow()}${foot()}`;
   }
 
   function contents() {
     return `
-      <section class="page-head"><p class="kicker"><span>Book One · Vinash</span><span>${C.released} chapters</span></p><h1 class="page-title">Chapters</h1>
+      <section class="page-head"><p class="kicker"><span>${C.released} chapters out</span></p><h1 class="page-title">Chapters</h1>
         <p class="page-lede">Each is titled with one Sanskrit word. A point on the wheel lights for every chapter you read.</p></section>
       <ol class="toc">${C.chapters.map((c) => `
         <li class="toc-row${DVR.isRead(c.n) ? " is-read" : ""}" data-n="${c.n}"><a href="/read/${c.n}/">
@@ -154,21 +156,20 @@
     return `
       <article class="chapter" data-n="${n}">
         <header class="ch-card">
-          <p class="kicker"><span>Chapter ${WORDS[n]}</span><span>${esc(c.pov)}</span><span>${c.minutes} min</span></p>
+          <p class="kicker"><span>Chapter ${WORDS[n]}</span><span>${esc(c.pov)}</span><span>${c.minutes} min read</span></p>
           <h1 class="ch-title">${esc(c.title)}</h1>
           <p class="ch-deva" lang="sa">${esc(c.deva)}</p>
           <p class="ch-gloss">${esc(c.gloss)}</p>
-          <span class="scroll-cue" aria-hidden="true">Read</span>
         </header>
         <div class="prose" id="prose">${c.html}</div>
         <footer class="ch-end" id="chEnd">
           <p class="end-mark" aria-hidden="true">✦</p>
-          <p class="kicker"><span>End of Chapter ${WORDS[n]}</span><span>${esc(c.title)}</span></p>
+          <p class="kicker"><span>End of Chapter ${WORDS[n]}</span></p>
           <div class="unlock">
             ${newCodex.length ? `<div><p class="u-k">Opened in your codex</p><ul>${newCodex.slice(0, 8).map((e) => `<li><b>${esc(e.name)}.</b> ${esc(e.text)}</li>`).join("")}</ul></div>` : ""}
             ${newWords.length ? `<div><p class="u-k">Words from this chapter</p><p class="u-words">${newWords.map((g) => esc(g.term)).join(" · ")}</p></div>` : ""}
           </div>
-          <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="kicker"><span>Next</span></span><span class="fine">${esc(nextLine())}</span>`}
+          <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="fine">${esc(nextLine())}</span>`}
             ${prev ? `<a class="ch-prev" href="/read/${n - 1}/">← ${esc(prev.title)}</a>` : ""}</div>
           ${acct.nudge()}
           ${next ? "" : ahead()}
@@ -178,23 +179,23 @@
 
   function codex() {
     const r = DVR.reached(), shown = Math.min(r, C.released);
-    const dial = Array.from({ length: C.released + 1 }, (_, i) => `<button type="button" data-set="${i}" aria-pressed="${i === shown}" aria-label="I have read ${i ? "up to Chapter " + WORDS[i] : "nothing yet"}" lang="hi">${DEVA(i)}</button>`).join("");
+    const dial = Array.from({ length: C.released + 1 }, (_, i) => `<button type="button" data-set="${i}" aria-pressed="${i === shown}" aria-label="I have read ${i ? "up to Chapter " + WORDS[i] : "nothing yet"}" title="${i ? "Chapter " + WORDS[i] : "Nothing read yet"}" lang="hi">${DEVA(i)}</button>`).join("");
     const cards = C.cards.map((k) => {
       const facts = k.facts.filter((f) => f.ch <= shown);
-      return `<article class="card"><p class="kicker"><span>${esc(k.name)}</span><span>${facts.length} of ${k.facts.length} known</span></p><h3>${esc(k.name)}</h3><p class="card-line">${esc(k.line)}</p>
-        ${facts.length ? `<ul class="facts">${facts.map((f) => `<li><span>CH ${pad(f.ch)}</span>${esc(f.text)}</li>`).join("")}</ul>` : `<p class="sealed-note">Sealed until Chapter ${WORDS[k.ch]}</p>`}</article>`;
+      return `<article class="card"><p class="kicker"><span>${facts.length} of ${k.facts.length} known</span></p><h3>${esc(k.name)}</h3><p class="card-line">${esc(k.line)}</p>
+        ${facts.length ? `<ul class="facts">${facts.map((f) => `<li><span>Ch. ${f.ch}</span>${esc(f.text)}</li>`).join("")}</ul>` : `<p class="sealed-note">Sealed until Chapter ${WORDS[k.ch]}</p>`}</article>`;
     }).join("");
     const kinds = [["person", "People"], ["place", "Places"], ["thing", "Things"], ["sign", "Signs"]];
     const groups = kinds.map(([k, label]) => {
       const items = C.codex.filter((e) => e.kind === k); if (!items.length) return "";
-      return `<div><h3>${label}</h3><dl>${items.map((e) => e.ch <= shown ? `<dt>${esc(e.name)}</dt><dd>${esc(e.text)}</dd>` : `<dt class="is-sealed">Sealed · Chapter ${WORDS[e.ch]}</dt><dd class="is-sealed">Opens when you read it.</dd>`).join("")}</dl></div>`;
+      return `<div><h3>${label}</h3><dl>${items.map((e) => e.ch <= shown ? `<dt>${esc(e.name)}</dt><dd>${esc(e.text)}</dd>` : `<dt class="is-sealed">Sealed until Chapter ${WORDS[e.ch]}</dt><dd class="is-sealed">Opens when you read it.</dd>`).join("")}</dl></div>`;
     }).join("");
     return `
-      <section class="page-head"><p class="kicker"><span>Your codex</span><span>${shown} of ${C.released} read</span></p><h1 class="page-title">Codex</h1>
+      <section class="page-head"><p class="kicker"><span>${shown} of ${C.released} chapters read</span></p><h1 class="page-title">Codex</h1>
         <p class="page-lede">Everything here opens as you read: the four, the places, the signs. Reading on another device? Set where you are.</p>
-        <div class="dial" role="group" aria-label="Where you are in the book"><span class="dial-k">Read up to</span>${dial}</div></section>
+        <div class="dial" role="group" aria-label="Where you are in the book"><span class="dial-k">Read up to</span>${dial}<span class="dial-now" aria-live="polite">${shown ? "Chapter " + WORDS[shown] : "Nothing yet"}</span></div></section>
       <section class="cards">${cards}</section>
-      <section class="section"><header class="sec-head"><p class="kicker"><span>Dwarka</span><span>Sector 12</span></p><h2>The map</h2></header><div class="map" id="map"></div></section>
+      <section class="section"><header class="sec-head"><h2>The map</h2></header><div class="map" id="map"></div></section>
       <section class="cx">${groups}</section>${foot()}`;
   }
 
@@ -202,21 +203,21 @@
     const r = DVR.reached();
     const beats = (C.premise.match(/[^.!?]+[.!?]+/g) || [C.premise]).map((s) => `<p class="beat" data-beat>${esc(s.trim())}</p>`).join("");
     return `
-      <section class="page-head"><p class="kicker"><span>Summary</span></p><h1 class="page-title">The Story</h1></section>
+      <section class="page-head"><h1 class="page-title">The Story</h1></section>
       <section class="beats">${beats}</section>
-      <section class="trilogy"><div class="book"><p class="kicker"><span>Book One</span><span>Being written</span></p><h3>Vinash <span lang="hi">विनाश</span></h3><p>The beginning of the crisis. Four people awaken under the Dwarka tear, lose people they promised to save, and learn what their power costs.</p></div>
+      <section class="trilogy"><div class="book"><p class="kicker"><span>Book One</span><span>being written</span></p><h3>Vinash <span lang="hi">विनाश</span></h3><p>The beginning of the crisis. Four people awaken under the Dwarka tear, lose people they promised to save, and learn what their power costs.</p></div>
         <div class="book later"><p class="kicker"><span>Books Two and Three</span></p><h3>Sealed</h3><p>They open when Book One ends.</p></div></section>
       <ol class="sums">${C.chapters.map((c) => `<li class="${c.n <= r ? "" : "is-veiled"}"><p class="kicker"><span>Chapter ${WORDS[c.n]}</span><span>${esc(c.pov)}</span></p><h3>${esc(c.title)} <span lang="sa">${esc(c.deva)}</span></h3><p>${c.n <= r ? esc(c.summary) : "Read Chapter " + WORDS[c.n] + " to unveil this."}</p></li>`).join("")}</ol>${foot()}`;
   }
   // the disclaimer and the author's page: their paragraphs come from tools/site_v2/disclaimer.md and author.md (already escaped by the build)
   const paras = (ps) => (ps || []).map((p) => (p.v ? `<p class="verse" lang="sa">${p.t}</p>` : p.h ? `<h2>${p.t}</h2>` : `<p>${p.t.replace("{year}", new Date().getFullYear())}</p>`)).join("");
-  const disclaimer = () => `<section class="page-head"><p class="kicker"><span>Disclaimer</span></p><h1 class="page-title">A work of fiction</h1></section>
+  const disclaimer = () => `<section class="page-head"><h1 class="page-title">A work of fiction</h1></section>
       <section class="about">${paras(C.disclaimer)}</section>${foot()}`;
-  const author = () => `<section class="page-head"><p class="kicker"><span>About the author</span></p><h1 class="page-title">${esc(C.author)}</h1></section>
+  const author = () => `<section class="page-head"><h1 class="page-title">${esc(C.author)}</h1></section>
       <section class="about">${paras(C.authorBio) || "<p>A few words from the author are on their way.</p>"}<p>Write to hello@divyarann.com.</p></section>${foot()}`;
-  const sealedPage = (kick, title, line) => `<section class="page-head sealed-page"><p class="kicker"><span>${kick}</span></p><h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}</p></section>${foot()}`;
+  const sealedPage = (kick, title, line) => `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}</p></section>${foot()}`;
   function about() {
-    return `<section class="page-head"><p class="kicker"><span>About</span></p><h1 class="page-title">Divyarann</h1></section>
+    return `<section class="page-head"><h1 class="page-title">Divyarann</h1></section>
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
       <h2>The author</h2><p>Written by <a href="/author/">${esc(C.author)}</a>. Write to hello@divyarann.com.</p>
       <h2>Privacy</h2><p>Your reading progress, bookmarks and settings (text size, colours, sound) are kept in your browser's local storage on this device. ${C.analytics ? "Visits are counted with GoatCounter (goatcounter.com), which keeps only totals, such as how many people opened each page and where they came from: it uses no cookies, stores no IP addresses and holds nothing that could identify you. The site sets no advertising or tracking cookies." : "Nothing about your reading is sent anywhere, and the site sets no advertising or tracking cookies and runs no analytics."}</p>
@@ -242,7 +243,7 @@
     s += `<path class="rail" d="M 612,18 C 586,120 520,196 486,268 C 452,340 468,420 520,486 C 560,536 610,572 648,604"/>`;
     C.places.filter((p) => p.x != null).forEach((p, i) => {
       const open = p.ch <= r;
-      s += `<g class="pin${open ? "" : " sealed"}" data-i="${i}" tabindex="0" role="button" aria-label="${open ? esc(p.name) : "A sealed place"}"><circle cx="${p.x}" cy="${p.y}" r="${open ? 5 : 4.5}"/>${open ? `<text x="${p.x + (p.side === "end" ? -12 : 12)}" y="${p.y + 4}" text-anchor="${p.side === "end" ? "end" : "start"}">${esc(p.name)}</text>` : ""}</g>`;
+      s += `<g class="pin${open ? "" : " sealed"}" data-i="${i}" tabindex="0" role="button" aria-label="${open ? esc(p.name) : "A sealed place"}"><circle class="hit" cx="${p.x}" cy="${p.y}" r="30"/><circle cx="${p.x}" cy="${p.y}" r="${open ? 5 : 4.5}"/>${open ? `<text x="${p.x + (p.side === "end" ? -12 : 12)}" y="${p.y + 4}" text-anchor="${p.side === "end" ? "end" : "start"}">${esc(p.name)}</text>` : ""}</g>`;
     });
     host.innerHTML = s + `</svg></div><div class="map-note" id="mapNote">${r ? "Tap a place to remember what happened there." : "Nothing on the map yet. Read Chapter One and the first places appear."}</div>`;
     const pinned = C.places.filter((p) => p.x != null);
@@ -348,18 +349,18 @@
   const ROUTES = [
     [/^(home)?$/, () => ["home", home()]], [/^chapters$/, () => ["contents", contents()]], [/^ch-(\d+)$/, (m) => (chap(+m[1]) ? ["reader", reader(+m[1]), +m[1]] : ["notfound", +m[1] > C.released && +m[1] <= 26 ? unreleased(+m[1]) : notFound()])],
     [/^codex$/, () => ["codex", codex()]], [/^story$/, () => ["story", story()]],
-    [/^tears$/, () => ["tears", sealedPage("Atlas", "The Seven Tears", "The sky has not opened yet. This atlas fills in as the story reaches the tears.")]],
-    [/^powers$/, () => ["powers", sealedPage("Reference", "Powers", "One energy, latent in everyone, answering what a person is actually resolved to do. Nobody has awakened yet.")]],
+    [/^tears$/, () => ["tears", sealedPage("", "The Seven Tears", "The sky has not opened yet. This atlas fills in as the story reaches the tears.")]],
+    [/^powers$/, () => ["powers", sealedPage("", "Powers", "One energy, latent in everyone, answering what a person is actually resolved to do. Nobody has awakened yet.")]],
     [/^about$/, () => ["about", about()]],
     [/^author$/, () => ["author", author()]],
     [/^disclaimer$/, () => ["disclaimer", disclaimer()]],
-    [/^subscribed$/, () => ["subscribed", mailPage("Almost there", "Check your email", "A confirmation link is on its way to your inbox. Open it and each new chapter will reach you by email. If it has not arrived in a few minutes, look in Promotions or Spam.", `<a class="cta" href="/read/">Back to the chapters</a>`)]],
-    [/^confirmed$/, () => ["confirmed", mailPage("You are on the list", "Welcome to Divyarann", "Each new chapter will arrive in your inbox on the day it is released.", `<a class="cta" href="/read/1/">Start at Chapter One</a><a class="cta ghost" href="/read/">All chapters</a>`)]],
+    [/^subscribed$/, () => ["subscribed", mailPage("", "Check your email", "A confirmation link is on its way to your inbox. Open it and each new chapter will reach you by email. If it has not arrived in a few minutes, look in Promotions or Spam.", `<a class="cta" href="/read/">Back to the chapters</a>`)]],
+    [/^confirmed$/, () => ["confirmed", mailPage("", "Welcome to Divyarann", "Each new chapter will arrive in your inbox on the day it is released.", `<a class="cta" href="/read/1/">Start at Chapter One</a><a class="cta ghost" href="/read/">All chapters</a>`)]],
     [/^notfound$/, () => ["notfound", notFound()]],
   ];
-  function mailPage(kick, title, line, ctas) { return `<section class="page-head sealed-page"><p class="kicker"><span>${kick}</span></p><h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><div class="cta-row">${ctas}</div></section>${foot()}`; }
+  function mailPage(kick, title, line, ctas) { return `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><div class="cta-row">${ctas}</div></section>${foot()}`; }
   function unreleased(n) { return `<section class="page-head sealed-page"><p class="kicker"><span>Chapter ${WORDS[n] || n}</span></p><h1 class="page-title">Not out yet</h1><p class="page-lede">${esc(nextLine() || "This chapter has not been released.")}</p><div class="cta-row"><a class="cta" href="/read/">All chapters</a></div></section>${foot()}`; }
-  function notFound() { return `<section class="page-head sealed-page"><p class="kicker"><span>Not found</span></p><h1 class="page-title">This page is not in the book</h1><p class="page-lede">The link may be old, or the page may not have opened yet.</p><div class="cta-row"><a class="cta" href="/">Back to the threshold</a><a class="cta ghost" href="/read/">All chapters</a></div></section>${foot()}`; }
+  function notFound() { return `<section class="page-head sealed-page"><h1 class="page-title">This page is not in the book</h1><p class="page-lede">The link may be old, or the page may not have opened yet.</p><div class="cta-row"><a class="cta" href="/">Back to the threshold</a><a class="cta ghost" href="/read/">All chapters</a></div></section>${foot()}`; }
   const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann", author: "About the author · Divyarann", disclaimer: "Disclaimer · Divyarann" };
   let current = null, navId = 0, ctx = null, landing = false;
   // the page places itself (the bookmark, or the top); ScrollTrigger keeps its own copy of this setting, so it is told too
@@ -389,7 +390,7 @@
     thread.clear(); { const p = $("#pop"); if (p) p.classList.remove("show"); }
     view.innerHTML = html; view.dataset.page = name;
     root.classList.toggle("on-reader", name === "reader");
-    document.querySelectorAll(".menu a[data-route]").forEach((a) => a.classList.toggle("is-on", a.dataset.route === name || (name === "reader" && a.dataset.route === "contents")));
+    document.querySelectorAll(".menu a[data-route]").forEach((a) => { const on = a.dataset.route === name || (name === "reader" && a.dataset.route === "contents"); a.classList.toggle("is-on", on); if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     if (lenis) lenis.scrollTo(0, { immediate: true, force: true }); else window.scrollTo(0, 0);
     current = { name, n };
     document.title = name === "reader" ? `Chapter ${WORDS[n]}: ${chap(n) ? chap(n).title : ""} · Divyarann` : TITLES[name] || TITLES.home;
@@ -614,7 +615,7 @@
   function watchAmbient() { if (!ambientIO) return; ambientIO.disconnect(); view.querySelectorAll(".scroll-cue, .is-next .ix-node").forEach((e) => ambientIO.observe(e)); }
   // the bar steps aside while reading downward and returns the moment the reader scrolls back up (PERF 2: a frame hook, not its own scroll listener)
   let lastY = 0;
-  frameHooks.add((y) => { root.classList.toggle("bar-solid", y > 40); if (Math.abs(y - lastY) > 6) { root.classList.toggle("bar-away", y > lastY && y > 280); lastY = y; } });
+  frameHooks.add((y) => { root.classList.toggle("bar-solid", y > 40); if (Math.abs(y - lastY) > 6) { root.classList.toggle("bar-away", y > lastY && y > 280); lastY = y; if (root.classList.contains("bar-away")) closeTools(); } });
   // a safety net: nothing stays invisible if an observer never fires (no scroll on a short page, a paused tab). It is only needed just after a page is made (PERF 4)
   let safetyT = 0;
   function armSafety() {
@@ -859,22 +860,39 @@
   let rs = 20; try { rs = +localStorage.getItem("divyarann-size") || 20; } catch (e) {} root.style.setProperty("--rs", rs + "px");
   // the text size and the colours are a reader's own: when they were last chosen goes with them, so the newest choice wins on every device (fromAccount: brought by it)
   const prefsTouched = () => { try { localStorage.setItem("divyarann-prefs-t", Date.now()); } catch (e) {} changed(); };
-  const setRs = (v, fromAccount) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (!fromAccount) prefsTouched(); if (ST) ST.refresh(); if (readerScroll) readerScroll(); };
-  $("#aMinus").addEventListener("click", () => setRs(rs - 1)); $("#aPlus").addEventListener("click", () => setRs(rs + 1));
+  const setRs = (v, fromAccount) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (!fromAccount) prefsTouched(); if (ST) ST.refresh(); if (readerScroll) readerScroll(); sizeEnds(); };
+  const aMinus = $("#aMinus"), aPlus = $("#aPlus");
+  const sizeEnds = () => { aMinus.disabled = rs <= 16; aPlus.disabled = rs >= 26; };   // 16 to 26 px: at either end the button is dimmed and does nothing
+  aMinus.addEventListener("click", () => setRs(rs - 1)); aPlus.addEventListener("click", () => setRs(rs + 1)); sizeEnds();
 
   // ---------- small things ----------
   function toast(m, ms) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), ms || 2600); }
   window.DVToast = toast;
-  const menuBtn = $("#menuBtn");
+  const menuBtn = $("#menuBtn"), menuLbl = menuBtn.querySelector(".mb-t"), appEl = $("#app");
   // closing the menu tells the wheel too (it stayed in the menu's pose on the next page, and after Escape). now: at once, with no wipe (behind the closed tear)
   function closeMenu(now) {
     const was = root.classList.contains("menu-open");
     if (now && was) { root.classList.add("menu-snap"); requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("menu-snap"))); }
-    root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); $("#menu").setAttribute("aria-hidden", "true"); $("#menu").inert = true; if (lenis) lenis.start();
+    root.classList.remove("menu-open"); menuBtn.setAttribute("aria-expanded", "false"); menuLbl.textContent = "Menu"; $("#menu").setAttribute("aria-hidden", "true"); $("#menu").inert = true; appEl.inert = false; if (lenis) lenis.start();
     if (was && window.DVGL) window.DVGL.menu(false);
   }
-  menuBtn.addEventListener("click", () => { const open = !root.classList.contains("menu-open"); root.classList.toggle("menu-open", open); menuBtn.setAttribute("aria-expanded", String(open)); $("#menu").setAttribute("aria-hidden", String(!open)); $("#menu").inert = !open; sound.tick(); if (lenis) open ? lenis.stop() : lenis.start(); if (window.DVGL) window.DVGL.menu(open); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
+  menuBtn.addEventListener("click", (e) => {
+    const open = !root.classList.contains("menu-open"); closeTools();
+    root.classList.toggle("menu-open", open); menuBtn.setAttribute("aria-expanded", String(open)); menuLbl.textContent = open ? "Close" : "Menu"; $("#menu").setAttribute("aria-hidden", String(!open)); $("#menu").inert = !open; appEl.inert = open;
+    sound.tick(); if (lenis) open ? lenis.stop() : lenis.start(); if (window.DVGL) window.DVGL.menu(open);
+    if (open && e.detail === 0) { const a = $(".menu a.is-on") || $(".menu a"); if (a) requestAnimationFrame(() => a.focus({ preventScroll: true })); }   // opened from the keyboard: focus goes into the list
+  });
+  // the display sheet (phones): the text size, the colours and the sound behind one Aa button
+  const toolsBtn = $("#toolsBtn");
+  function closeTools() { if (!root.classList.contains("tools-open")) return; root.classList.remove("tools-open"); toolsBtn.setAttribute("aria-expanded", "false"); }
+  toolsBtn.addEventListener("click", () => { const open = !root.classList.contains("tools-open"); root.classList.toggle("tools-open", open); toolsBtn.setAttribute("aria-expanded", String(open)); sound.tick(); });
+  document.addEventListener("pointerdown", (e) => { if (root.classList.contains("tools-open") && !(e.target.closest && e.target.closest("#barTools, #toolsBtn"))) closeTools(); }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (root.classList.contains("menu-open")) { closeMenu(); menuBtn.focus({ preventScroll: true }); }
+    else if (root.classList.contains("tools-open")) { closeTools(); toolsBtn.focus({ preventScroll: true }); }
+  });
+  $("#skip").addEventListener("click", (e) => { e.preventDefault(); view.focus(); });   // the in-page link would otherwise be taken for a page change
   function setPalette(p, fromAccount) {
     if ((root.getAttribute("data-palette") || "akash") === p) return;
     if (window.DVGL) window.DVGL.eclipse();
@@ -1075,7 +1093,6 @@
     win.innerHTML = `<div class="acct-in">
       <button type="button" class="acct-x" data-close aria-label="Close">×</button>
       <div class="acct-out">
-        <p class="kicker"><span>Your account</span></p>
         <h2 id="acctT">Sign in to save your progress on multiple devices</h2>
         <p class="acct-lead">Your chapters, bookmarks and settings follow you to any phone or computer you sign in on.</p>
         <button type="button" class="acct-g" id="acG">${G}<span>Continue with Google</span></button>
@@ -1092,7 +1109,6 @@
         <p class="acct-guest-row"><button type="button" class="acct-guest" data-guest>Continue as a guest</button><span>and read on this device only</span></p>
       </div>
       <div class="acct-on" hidden>
-        <p class="kicker"><span>Your account</span></p>
         <h2>Signed in</h2>
         <p class="acct-who" id="acWho"></p>
         <p class="acct-state" id="acState"></p>
@@ -1123,8 +1139,9 @@
       "auth/operation-not-allowed": "That way of signing in is not available yet.",
     };
     const why = (e) => WHY[e && e.code] || "Something went wrong. Please try again.";
-    let opener = null;
+    let opener = null, hideT = 0;
     function open() {
+      clearTimeout(hideT);   // a window reopened while it was still closing (sign in, then straight to Sign out) was hidden by the closing's own timer
       opener = document.activeElement; closeMenu(); ask.hide();
       paint(); say(""); win.hidden = false; root.classList.add("acct-open"); if (lenis) lenis.stop();
       requestAnimationFrame(() => { win.classList.add("show"); const f = user ? q("#acOut") : (inApp ? q("#acEmail") : q("#acG")); if (f) f.focus(); });
@@ -1133,7 +1150,7 @@
     function close() {
       if (win.hidden) return;
       win.classList.remove("show"); root.classList.remove("acct-open"); if (lenis) lenis.start();
-      setTimeout(() => { win.hidden = true; q("#acConfirm").hidden = true; }, reduced() ? 0 : 300);
+      clearTimeout(hideT); hideT = setTimeout(() => { win.hidden = true; q("#acConfirm").hidden = true; }, reduced() ? 0 : 300);
       if (opener && opener.isConnected) opener.focus({ preventScroll: true });
     }
     function guest() { ls.set(CHOICE, "guest"); close(); ask.hide(); paint(); }
