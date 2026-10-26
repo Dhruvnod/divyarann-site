@@ -145,7 +145,7 @@ html:not(.js) .bar-r button, html:not(.js) .bar-tools { display: none; }   /* wi
 .premise-text .ln { display: block; overflow: hidden; } .premise-text .ln > span { display: inline-block; }
 .cta-row { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 44px; align-items: center; }
 .cta { position: relative; font-family: var(--f-ui); font-size: 16px; font-weight: 500; letter-spacing: 0.01em; line-height: 1.6; padding: 14px 28px; border: 1px solid var(--bone-2); border-radius: 999px; transition: background var(--t-hover) var(--ease), color var(--t-hover) var(--ease), border-color var(--t-hover) var(--ease); }
-.cta:hover { background: var(--bone); color: var(--ink); }
+.cta:hover { background: var(--bone); color: var(--ink); }   /* the shape, its fill and its focus ring are the leaf's (button shapes, at the end) */
 .cta:active { background: var(--bone-2); border-color: var(--bone-2); color: var(--ink); }
 .cta.ghost { border-color: transparent; padding-left: 0; padding-right: 0; border-radius: 0; } .cta.ghost::after { content: ""; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: currentColor; transform-origin: right; transition: transform var(--t-hover) var(--ease); }
 .cta.ghost:hover { background: none; color: var(--bone); } .cta.ghost:hover::after { transform: scaleX(0.3); }
@@ -532,3 +532,66 @@ html.no-webgl canvas#gl { display: none; }
 .foot-in p:first-child, .foot-in .foot-links { font-family: var(--f-ui); font-size: var(--fs-label); letter-spacing: var(--ls-label); }
 .foot-links { display: flex; flex-wrap: wrap; gap: 0 10px; margin-inline: -8px; }
 .foot-links a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 8px; color: var(--bone-2); transition: color var(--t-hover) var(--ease); } .foot-links a:hover { color: var(--bone); }
+
+/* ================= button shapes: the leaf (26 October 2026; the six directions reviewed are in artwork/codex/directions/buttons_2026-10-26/) =================
+   The pill is gone: a button's ends are pointed, their sides curving like the leaves round the wheel. A button is three layers: the element carries the text only,
+   its ::before is the FRAME (the line colour, clipped to the outline polygon) and its ::after the PLATE (the page colour, one pixel in, clipped to the same polygon
+   moved in by one pixel), so the 1px edge between them is a border that follows the curves; clip-path would clip a border, an outline and a box-shadow, so none is used.
+   The straight runs of every polygon lie 3px outside their own box, so they are the browser's pixel-snapped box edges and stay crisp at any width and scale.
+   Each end is a curve from the tip at mid-height into the flat top edge (34px long on a button, 13px on a bar control), sampled into 8 points for a 52px button. */
+:root { --btn-fill: var(--ground); --bt-line: var(--bone-2); }
+:root :is(.acct-in, .acct-ask, .menu, .bar-tools) { --btn-fill: var(--ink-2); }
+
+/* the big buttons: .cta, the menu's account button (the pill's box: its 1px border became 1px of padding) */
+:root :is(.cta:not(.ghost), .menu-acct-btn) { position: relative; isolation: isolate; border: 0; border-radius: 0; background: none; transition: color var(--t-hover) var(--ease); }
+:root .cta:not(.ghost) { padding: 15px 29px; }
+:root .acct .cta:not(.ghost) { padding: 14px 23px; }
+:root .acct-ask .cta:not(.ghost) { padding: 12px 23px; }
+:root .menu-acct-btn { padding: 0 23px; --bt-line: var(--line-2); }
+:root :is(.cta:not(.ghost), .menu-acct-btn)::before, :root :is(.cta:not(.ghost), .menu-acct-btn)::after { content: ""; position: absolute; pointer-events: none; transition: background-color var(--t-hover) var(--ease), box-shadow var(--t-hover) var(--ease); }
+:root :is(.cta:not(.ghost), .menu-acct-btn)::before { z-index: -2; inset: 0; background: var(--bt-line); clip-path: polygon(var(--bt-f)); }
+:root :is(.cta:not(.ghost), .menu-acct-btn)::after { z-index: -1; inset: 1px; background: var(--btn-fill); clip-path: polygon(var(--bt-p)); }
+:root :is(.cta:not(.ghost), .menu-acct-btn):hover { color: var(--ink); }
+:root :is(.cta:not(.ghost), .menu-acct-btn):hover::before, :root :is(.cta:not(.ghost), .menu-acct-btn):hover::after { background: var(--bone); }
+:root :is(.cta:not(.ghost), .menu-acct-btn):active { color: var(--ink); }
+:root :is(.cta:not(.ghost), .menu-acct-btn):active::before, :root :is(.cta:not(.ghost), .menu-acct-btn):active::after { background: var(--bone-2); }
+:root :is(.cta:not(.ghost), .menu-acct-btn):focus-visible { outline: 0; }
+:root :is(.cta:not(.ghost), .menu-acct-btn):focus-visible::before { inset: -1px; background: var(--accent); clip-path: polygon(var(--bt-ff)); transition: none; }
+
+/* the bar's controls (and the lit count): nothing at rest, as before; on hover the shape appears as a hairline plate, pressed it fills, focused it rings */
+:root :is(.bar-r button, .lit-count) { position: relative; isolation: isolate; border-radius: 0; }
+:root :is(.bar-r button, .lit-count)::before, :root :is(.bar-r button, .lit-count)::after { content: ""; position: absolute; pointer-events: none; opacity: 0; transition: opacity var(--t-micro) var(--ease), background-color var(--t-micro) var(--ease); }
+:root :is(.bar-r button, .lit-count)::before { z-index: -2; inset: 0; background: var(--line-2); clip-path: polygon(var(--bs-f)); }
+:root :is(.bar-r button, .lit-count)::after { z-index: -1; inset: 1px; background: var(--ink-2); clip-path: polygon(var(--bs-p)); }
+:root :is(.bar-r button, .lit-count):hover::before, :root :is(.bar-r button, .lit-count):hover::after { opacity: 1; }
+:root :is(.bar-r button, .lit-count):active::before, :root :is(.bar-r button, .lit-count):active::after { opacity: 1; }
+:root :is(.bar-r button, .lit-count):active::after { background: color-mix(in srgb, var(--bone) 12%, var(--ink-2)); }
+:root .bar-r .tools-btn[aria-expanded="true"]::before, :root .bar-r .tools-btn[aria-expanded="true"]::after { opacity: 1; }
+:root .bar-r button:active, :root .bar-r .tools-btn[aria-expanded="true"] { background: none; }
+:root :is(.bar-r button, .lit-count):focus-visible { outline: 0; }
+:root :is(.bar-r button, .lit-count):focus-visible::before { opacity: 1; background: var(--accent); transition: none; }
+:root :is(.bar-r button, .lit-count):focus-visible::after { opacity: 1; inset: 2px; clip-path: polygon(var(--bs-p2)); transition: none; }
+/* on a phone the Display sheet's buttons carried a border; here they carry the frame all the time (accent when chosen) */
+@media (max-width: 760px) {
+  :root .bar-tools button { border: 0; padding-inline: 11px; }
+  :root .bar-tools .snd { padding: 0 15px; }
+  :root .bar-tools button::before, :root .bar-tools button::after { opacity: 1; }
+  :root .bar-tools button[aria-pressed="true"]::before { background: var(--accent); }
+}
+/* Windows high-contrast mode drops backgrounds, so the layers would paint as opaque boxes over the border: they are switched off, the big buttons keep a plain border and every focus gets a system outline */
+@media (forced-colors: active) {
+  :root :is(.cta:not(.ghost), .menu-acct-btn, .bar-tools button) { border: 1px solid ButtonText; }
+  :root :is(.cta:not(.ghost), .menu-acct-btn, .bar-r button, .lit-count)::before, :root :is(.cta:not(.ghost), .menu-acct-btn, .bar-r button, .lit-count)::after { display: none; }
+  :root :is(.cta, .menu-acct-btn, .bar-r button, .lit-count):focus-visible { outline: 2px solid Highlight !important; outline-offset: 3px !important; }
+}
+
+/* the leaf's outlines: --bt-* for the big buttons (frame, plate, focus ring), --bs-* for the bar's controls */
+:root {
+  --bt-f: 34px -3px, calc(100% - 34px) -3px, calc(100% - 29.6px) calc(50% - 25.54px), calc(100% - 25.64px) calc(50% - 24.24px), calc(100% - 22px) calc(50% - 22.19px), calc(100% - 18.56px) calc(50% - 19.5px), calc(100% - 15.19px) calc(50% - 16.27px), calc(100% - 11.78px) calc(50% - 12.61px), calc(100% - 8.19px) calc(50% - 8.6px), calc(100% - 4.3px) calc(50% - 4.37px), 100% 50%, calc(100% - 4.3px) calc(50% + 4.37px), calc(100% - 8.19px) calc(50% + 8.6px), calc(100% - 11.78px) calc(50% + 12.61px), calc(100% - 15.19px) calc(50% + 16.27px), calc(100% - 18.56px) calc(50% + 19.5px), calc(100% - 22px) calc(50% + 22.19px), calc(100% - 25.64px) calc(50% + 24.24px), calc(100% - 29.6px) calc(50% + 25.54px), calc(100% - 34px) calc(100% + 3px), 34px calc(100% + 3px), 29.6px calc(50% + 25.54px), 25.64px calc(50% + 24.24px), 22px calc(50% + 22.19px), 18.56px calc(50% + 19.5px), 15.19px calc(50% + 16.27px), 11.78px calc(50% + 12.61px), 8.19px calc(50% + 8.6px), 4.3px calc(50% + 4.37px), 0px 50%, 4.3px calc(50% - 4.37px), 8.19px calc(50% - 8.6px), 11.78px calc(50% - 12.61px), 15.19px calc(50% - 16.27px), 18.56px calc(50% - 19.5px), 22px calc(50% - 22.19px), 25.64px calc(50% - 24.24px), 29.6px calc(50% - 25.54px);
+  --bt-p: 33.05px -3px, calc(100% - 33.05px) -3px, calc(100% - 28.81px) calc(50% - 24.56px), calc(100% - 25.04px) calc(50% - 23.32px), calc(100% - 21.56px) calc(50% - 21.36px), calc(100% - 18.22px) calc(50% - 18.75px), calc(100% - 14.91px) calc(50% - 15.57px), calc(100% - 11.52px) calc(50% - 11.93px), calc(100% - 7.93px) calc(50% - 7.93px), calc(100% - 4.03px) calc(50% - 3.68px), calc(100% - 0.4px) 50%, calc(100% - 4.03px) calc(50% + 3.68px), calc(100% - 7.93px) calc(50% + 7.93px), calc(100% - 11.52px) calc(50% + 11.93px), calc(100% - 14.91px) calc(50% + 15.57px), calc(100% - 18.22px) calc(50% + 18.75px), calc(100% - 21.56px) calc(50% + 21.36px), calc(100% - 25.04px) calc(50% + 23.32px), calc(100% - 28.81px) calc(50% + 24.56px), calc(100% - 33.05px) calc(100% + 3px), 33.05px calc(100% + 3px), 28.81px calc(50% + 24.56px), 25.04px calc(50% + 23.32px), 21.56px calc(50% + 21.36px), 18.22px calc(50% + 18.75px), 14.91px calc(50% + 15.57px), 11.52px calc(50% + 11.93px), 7.93px calc(50% + 7.93px), 4.03px calc(50% + 3.68px), 0.4px 50%, 4.03px calc(50% - 3.68px), 7.93px calc(50% - 7.93px), 11.52px calc(50% - 11.93px), 14.91px calc(50% - 15.57px), 18.22px calc(50% - 18.75px), 21.56px calc(50% - 21.36px), 25.04px calc(50% - 23.32px), 28.81px calc(50% - 24.56px);
+  --bt-ff: 34.95px -3px, calc(100% - 34.95px) -3px, calc(100% - 30.39px) calc(50% - 26.53px), calc(100% - 26.23px) calc(50% - 25.16px), calc(100% - 22.44px) calc(50% - 23.03px), calc(100% - 18.9px) calc(50% - 20.26px), calc(100% - 15.48px) calc(50% - 16.98px), calc(100% - 12.04px) calc(50% - 13.28px), calc(100% - 8.45px) calc(50% - 9.28px), calc(100% - 4.58px) calc(50% - 5.06px), calc(100% + 0.4px) 50%, calc(100% - 4.58px) calc(50% + 5.06px), calc(100% - 8.45px) calc(50% + 9.28px), calc(100% - 12.04px) calc(50% + 13.28px), calc(100% - 15.48px) calc(50% + 16.98px), calc(100% - 18.9px) calc(50% + 20.26px), calc(100% - 22.44px) calc(50% + 23.03px), calc(100% - 26.23px) calc(50% + 25.16px), calc(100% - 30.39px) calc(50% + 26.53px), calc(100% - 34.95px) calc(100% + 3px), 34.95px calc(100% + 3px), 30.39px calc(50% + 26.53px), 26.23px calc(50% + 25.16px), 22.44px calc(50% + 23.03px), 18.9px calc(50% + 20.26px), 15.48px calc(50% + 16.98px), 12.04px calc(50% + 13.28px), 8.45px calc(50% + 9.28px), 4.58px calc(50% + 5.06px), -0.4px 50%, 4.58px calc(50% - 5.06px), 8.45px calc(50% - 9.28px), 12.04px calc(50% - 13.28px), 15.48px calc(50% - 16.98px), 18.9px calc(50% - 20.26px), 22.44px calc(50% - 23.03px), 26.23px calc(50% - 25.16px), 30.39px calc(50% - 26.53px);
+  --bs-f: 18.69px -3px, calc(100% - 18.69px) -3px, calc(100% - 10.61px) calc(50% - 20.74px), calc(100% - 8.41px) calc(50% - 17.49px), calc(100% - 6.31px) calc(50% - 13.01px), calc(100% - 4.26px) calc(50% - 8.09px), calc(100% - 2.18px) calc(50% - 3.49px), 100% 50%, calc(100% - 2.18px) calc(50% + 3.49px), calc(100% - 4.26px) calc(50% + 8.09px), calc(100% - 6.31px) calc(50% + 13.01px), calc(100% - 8.41px) calc(50% + 17.49px), calc(100% - 10.61px) calc(50% + 20.74px), calc(100% - 18.69px) calc(100% + 3px), 18.69px calc(100% + 3px), 10.61px calc(50% + 20.74px), 8.41px calc(50% + 17.49px), 6.31px calc(50% + 13.01px), 4.26px calc(50% + 8.09px), 2.18px calc(50% + 3.49px), 0px 50%, 2.18px calc(50% - 3.49px), 4.26px calc(50% - 8.09px), 6.31px calc(50% - 13.01px), 8.41px calc(50% - 17.49px), 10.61px calc(50% - 20.74px);
+  --bs-p: 17.94px -3px, calc(100% - 17.94px) -3px, calc(100% - 10.3px) calc(50% - 19.97px), calc(100% - 8.28px) calc(50% - 16.99px), calc(100% - 6.23px) calc(50% - 12.61px), calc(100% - 4.18px) calc(50% - 7.69px), calc(100% - 2.06px) calc(50% - 3.02px), calc(100% - 0.18px) 50%, calc(100% - 2.06px) calc(50% + 3.02px), calc(100% - 4.18px) calc(50% + 7.69px), calc(100% - 6.23px) calc(50% + 12.61px), calc(100% - 8.28px) calc(50% + 16.99px), calc(100% - 10.3px) calc(50% + 19.97px), calc(100% - 17.94px) calc(100% + 3px), 17.94px calc(100% + 3px), 10.3px calc(50% + 19.97px), 8.28px calc(50% + 16.99px), 6.23px calc(50% + 12.61px), 4.18px calc(50% + 7.69px), 2.06px calc(50% + 3.02px), 0.18px 50%, 2.06px calc(50% - 3.02px), 4.18px calc(50% - 7.69px), 6.23px calc(50% - 12.61px), 8.28px calc(50% - 16.99px), 10.3px calc(50% - 19.97px);
+  --bs-p2: 17.19px -3px, calc(100% - 17.19px) -3px, calc(100% - 9.99px) calc(50% - 19.21px), calc(100% - 8.15px) calc(50% - 16.5px), calc(100% - 6.14px) calc(50% - 12.2px), calc(100% - 4.09px) calc(50% - 7.29px), calc(100% - 1.95px) calc(50% - 2.55px), calc(100% - 0.36px) 50%, calc(100% - 1.95px) calc(50% + 2.55px), calc(100% - 4.09px) calc(50% + 7.29px), calc(100% - 6.14px) calc(50% + 12.2px), calc(100% - 8.15px) calc(50% + 16.5px), calc(100% - 9.99px) calc(50% + 19.21px), calc(100% - 17.19px) calc(100% + 3px), 17.19px calc(100% + 3px), 9.99px calc(50% + 19.21px), 8.15px calc(50% + 16.5px), 6.14px calc(50% + 12.2px), 4.09px calc(50% + 7.29px), 1.95px calc(50% + 2.55px), 0.36px 50%, 1.95px calc(50% - 2.55px), 4.09px calc(50% - 7.29px), 6.14px calc(50% - 12.2px), 8.15px calc(50% - 16.5px), 9.99px calc(50% - 19.21px);
+}
+:root .acct-g { border-radius: 8px; }
