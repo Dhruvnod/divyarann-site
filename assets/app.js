@@ -220,6 +220,7 @@
     return `<section class="page-head"><h1 class="page-title">Divyarann</h1></section>
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
       <h2>The author</h2><p>Written by <a href="/author/">${esc(C.author)}</a>. Write to hello@divyarann.com.</p>
+      ${C.music ? `<h2>Music</h2><p>Music composed by ${esc(C.author)}. Its instrument samples come from the MusyngKite soundfont, under the <a href="https://creativecommons.org/licenses/by-sa/3.0/" rel="noopener">CC BY-SA 3.0</a> licence.</p>` : ""}
       <h2>Privacy</h2><p>Your reading progress, bookmarks and settings (text size, colours, sound) are kept in your browser's local storage on this device. ${C.analytics ? "Visits are counted with GoatCounter (goatcounter.com), which keeps only totals, such as how many people opened each page and where they came from: it uses no cookies, stores no IP addresses and holds nothing that could identify you. The site sets no advertising or tracking cookies." : "Nothing about your reading is sent anywhere, and the site sets no advertising or tracking cookies and runs no analytics."}</p>
       ${C.accounts ? `<h2>Your account</h2><p>Signing in is optional: as a guest you read on this device alone. If you sign in, your account (your name and email address from Google, or the email address you sign up with) and a copy of your reading progress, bookmarks and text size and colours are kept with Google Firebase, in its Mumbai data centre, so they follow you to any device you sign in on. Signing in also adds your address to the chapter emails at Kit, which you confirm from your inbox. You can sign out, or delete your account and its saved progress, from the menu at any time.</p>` : ""}
       <p>If you join the email list, your address is held by Kit (kit.com), the mail service that sends each new chapter. Every email has a one-click unsubscribe.</p>
@@ -251,37 +252,49 @@
       g.addEventListener("click", show); g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } }); });
   }
 
-  // ---------- sound: a tanpura-like drone, a near-silent reading bed, and four small cues (all opt-in) ----------
+  // ---------- sound: the music (Akash, a calm loop in Raag Bhupali composed by the author) and four small cues (all opt-in) ----------
+  // The loop is fetched and decoded only when a reader turns the sound on, then repeats with no seam (an AudioBufferSourceNode with loop on; an <audio loop>
+  // element leaves a short gap in some browsers). It plays a little under its file's level, drops to a quiet bed inside a chapter, and the audio context is
+  // suspended while the sound is off or the tab is hidden, so it costs nothing then. It replaced the synthesised tanpura drone on 2026-10-28.
   const sound = (() => {
-    let ac = null, master = null, bed = null, on = false, mode = "ambient", timer = 0, step = 0;
+    const LEVEL = { ambient: 0.7, reading: 0.28 };
+    let ac = null, master = null, music = null, track = null, loading = null, on = false, mode = "ambient", sleepT = 0;
     function ensure() {
       if (ac) return true; const Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return false;
       ac = new Ctor(); master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
-      bed = ac.createGain(); bed.gain.value = 0.8; const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400; bed.connect(lp); lp.connect(master); bed._lp = lp;
-      const n = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = n.getChannelData(0); let b = 0; for (let i = 0; i < d.length; i++) { b = 0.98 * b + 0.02 * (Math.random() * 2 - 1); d[i] = b * 3; }
-      const room = ac.createBufferSource(); room.buffer = n; room.loop = true; const rg = ac.createGain(); rg.gain.value = 0.05; room.connect(rg); rg.connect(master); room.start();
+      music = ac.createGain(); music.gain.value = 0; music.connect(master);
       return true;
     }
-    function pluck(f, v) {   // one tanpura string: a buzzing saw that rings away
-      const t = ac.currentTime, o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), bp = ac.createBiquadFilter();
-      o.type = "sawtooth"; o2.type = "sawtooth"; o.frequency.value = f; o2.frequency.value = f * 2.004; bp.type = "lowpass"; bp.frequency.setValueAtTime(2600, t); bp.frequency.exponentialRampToValueAtTime(500, t + 3.6);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 5.2);
-      o.connect(bp); o2.connect(bp); bp.connect(g); g.connect(bed); o.start(t); o2.start(t); o.stop(t + 5.4); o2.stop(t + 5.4);
+    function sources() { const M = C.music || {}; let ogg = false; try { ogg = !!M.ogg && new Audio().canPlayType('audio/ogg; codecs="vorbis"') !== ""; } catch (e) {} return (ogg ? [M.ogg, M.mp3] : [M.mp3]).filter(Boolean); }
+    function decode(url) {   // Safari's older decodeAudioData only calls back, the newer one also returns a promise
+      return fetch(url).then((r) => { if (!r.ok) throw new Error("music " + r.status); return r.arrayBuffer(); })
+        .then((b) => new Promise((res, rej) => { const q = ac.decodeAudioData(b, res, rej); if (q && q.then) q.then(res, rej); }));
     }
-    const PATTERN = [98, 130.81, 130.81, 65.41];   // Pa, Sa, Sa, low Sa
-    function loop() { if (!on) return; const v = mode === "reading" ? 0.018 : 0.045; pluck(PATTERN[step % 4], v); step++; timer = setTimeout(loop, step % 4 === 0 ? 1900 : 1250); }
+    function level(sec) { if (!music) return; const t = ac.currentTime; music.gain.cancelScheduledValues(t); music.gain.setValueAtTime(music.gain.value, t); music.gain.linearRampToValueAtTime(track ? LEVEL[mode] : 0, t + sec); }
+    function start() {   // the first time the sound comes on; later on and off only move the master gain and suspend or resume the context
+      if (track || loading) return; const urls = sources(); if (!urls.length) return;
+      loading = urls.reduce((p, u) => p.catch(() => decode(u)), Promise.reject(new Error("none")))
+        .then((buf) => { track = ac.createBufferSource(); track.buffer = buf; track.loop = true; if (C.music.seconds) track.loopEnd = Math.min(buf.duration, C.music.seconds); track.connect(music); track.start(); level(3); })
+        .catch(() => { loading = null; });   // offline or undecodable: the cues still work, and the next time the sound is turned on it tries again
+    }
+    document.addEventListener("visibilitychange", () => { if (!ac || !on) return; if (document.hidden) ac.suspend(); else ac.resume(); });
     function blip(f, dur, v, type) { if (!on || !ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = type || "sine"; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05); }
     function whoosh(up) { if (!on || !ac) return; const t = ac.currentTime, len = 0.9, b = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = b; f.type = "bandpass"; f.Q.value = 2.5; f.frequency.setValueAtTime(up ? 300 : 2200, t); f.frequency.exponentialRampToValueAtTime(up ? 2200 : 300, t + len);
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + len * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + len); s.connect(f); f.connect(g); g.connect(master); s.start(t); }
     return {
-      set(v) { if (v && !ensure()) return; on = v; if (ac) { if (ac.state === "suspended") ac.resume(); master.gain.cancelScheduledValues(ac.currentTime); master.gain.linearRampToValueAtTime(v ? 0.9 : 0, ac.currentTime + 0.8); }
-        clearTimeout(timer); if (v) loop(); const b = $("#sndBtn"); if (b) b.setAttribute("aria-pressed", String(v)); try { localStorage.setItem("divyarann-sound", v ? "1" : "0"); } catch (e) {} },
+      set(v) { if (v && !ensure()) return; on = v;
+        if (ac) { const t = ac.currentTime; clearTimeout(sleepT); if (v) { if (ac.state === "suspended") ac.resume(); start(); }
+          master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(v ? 0.9 : 0, t + 0.8);
+          if (!v) sleepT = setTimeout(() => { if (!on && ac.state === "running") ac.suspend(); }, 1000); }
+        const b = $("#sndBtn"); if (b) b.setAttribute("aria-pressed", String(v)); try { localStorage.setItem("divyarann-sound", v ? "1" : "0"); } catch (e) {} },
       get on() { return on; },
-      mode(m) { mode = m; if (bed) bed._lp.frequency.linearRampToValueAtTime(m === "reading" ? 600 : 1400, ac.currentTime + 1.5); },
+      get playing() { return !!track; },
+      mode(m) { mode = m; level(2); },
       tick() { blip(1760, 0.07, 0.03); }, light() { blip(880, 2.2, 0.06); blip(1320, 2.6, 0.035); blip(1760, 1.8, 0.02); }, open() { whoosh(true); }, close() { whoosh(false); },
     };
   })();
+  window.DVSound = sound;   // for the tests: whether the loop has started
 
   // ---------- the tear between pages ----------
   const tearT = $("#tearT"), halves = tearT.querySelectorAll(".half"), seam = $("#tearT path");
