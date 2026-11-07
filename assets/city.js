@@ -10,8 +10,8 @@
    fades in. (Until 30 October the strongest tier also fetched n8ao, an ambient occlusion pass, once the camera came close; the building shader does that work now.) */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { fetchGz, fetchRaw, prepareSteps, heightAt, unpackLines, decodePath, streetIndex, useShapeUtils, noiseData, treeSteps, TREE_TILE } from "./city_data.js?v=ad3b5347fc";
-import * as S from "./city_shaders.js?v=ad3b5347fc";
+import { fetchGz, fetchRaw, prepareSteps, heightAt, unpackLines, decodePath, streetIndex, useShapeUtils, noiseData, treeSteps, TREE_TILE } from "./city_data.js?v=fe33627d7b";
+import * as S from "./city_shaders.js?v=fe33627d7b";
 
 useShapeUtils(THREE.ShapeUtils);
 
@@ -93,7 +93,7 @@ export const CITY_DAY = Object.freeze({
    prepare(file, pre) starts a worker (city_data.js, run as a module worker by its own address) that unpacks the city file and builds every typed array of the scene, and returns a handle whose promise
    gives them back (handed over, not copied). The page calls it as soon as a reader chooses a city on the globe, so that by the time "Fly down" is pressed the city is mostly made; mount() takes the handle
    (opts.prepared) or starts one itself. Where workers fail (an old browser) the same steps run on the main thread between frames. */
-const DATA_URL = new URL("./city_data.js?v=ad3b5347fc", import.meta.url).href;      // the build gives this address the modules' version, as it does the import above
+const DATA_URL = new URL("./city_data.js?v=fe33627d7b", import.meta.url).href;      // the build gives this address the modules' version, as it does the import above
 function threeCoreURL() {     // a worker has no import map: the address of three's core module the page itself loaded (the triangulator lives there)
   try { const im = JSON.parse(document.querySelector('script[type="importmap"][data-atlas]').textContent).imports || {}; const k = Object.keys(im).find((x) => /\/three\.core\.js$/.test(x)); if (k) return im[k]; } catch (e) {}
   try { return import.meta.resolve("three").replace(/three\.module(\.min)?\.js$/, "three.core.min.js"); } catch (e) {}
@@ -103,7 +103,7 @@ function threeCoreURL() {     // a worker has no import map: the address of thre
    city's card is open and the globe rests, and mount() takes it, so that wait is not in the middle of the dive. One at most; dropSpare() lets it go. */
 let spare = null;
 /* a phone has no post stack, so its canvas is multisampled (resolved on chip on a phone's GPU); a computer's antialiasing is the post stack's (30 October) */
-const touchFirst = () => { try { return matchMedia("(pointer: coarse)").matches; } catch (e) { return false; } };
+const touchFirst = () => { try { return matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 820); } catch (e) { return false; } };   // Samsung phones count as a fine pointer (audit city-3)
 function newRenderer(canvas) {
   const gp = new URLSearchParams(location.search).get("gpu");   // the default power preference, as the globe uses (a laptop is not woken to its second GPU for a page); ?gpu=low or ?gpu=high only for measuring
   return new THREE.WebGLRenderer({ canvas, antialias: touchFirst(), alpha: false, powerPreference: gp === "low" ? "low-power" : gp === "high" ? "high-performance" : "default", stencil: false, depth: true });
@@ -217,7 +217,7 @@ export function mount(host, opts) {
      context is asked: until 29 October a second, throwaway WebGL context was made just to read the GPU's name). strong: the high tier (post stack, occlusion), mid: bloom and SMAA, phone and low: no post. */
   let gpu = "";
   try { const g = renderer.getContext(), x = g.getExtension("WEBGL_debug_renderer_info"); gpu = x ? String(g.getParameter(x.UNMASKED_RENDERER_WEBGL)) : ""; } catch (e) {}
-  const phone = matchMedia("(pointer: coarse)").matches;       // a touch screen, not a small window (31 October: a laptop's browser under 700 px tall was given a phone's tier)
+  const phone = touchFirst();       // a touch screen (Samsung's too, audit city-3), not a small window (31 October: a laptop's browser under 700 px tall was given a phone's tier)
   const soft = /swiftshader|basic render|llvmpipe|software/i.test(gpu);
   const weak = /intel|mali|adreno|powervr|apple gpu|videocore/i.test(gpu) && !/arc|iris xe max/i.test(gpu);
   const force = new URLSearchParams(location.search).get("q");

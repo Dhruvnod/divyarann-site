@@ -519,7 +519,7 @@ html.no-webgl canvas#gl { display: none; }
   .tearline-hit { left: 0; width: 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.2s !important; }
+  *, *::before, *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .title span { transform: none; opacity: 1; }
 }
 .follow-lead { margin: 0; max-width: 46ch; color: var(--bone-2); font-size: var(--fs-lead); text-wrap: pretty; }

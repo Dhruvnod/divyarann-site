@@ -107,7 +107,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   // A calm page steps back up, slowly. A short calibration at start-up picks the floor on a slow device, so the first scroll is already light.
   var PAGE_FPS = [60, 30, 15, 15];
   var DVCPU = window.DVCPU || null;
-  var FPSQ = /[?&]fps=(\d+)/.exec(QS), FPS0 = FPSQ ? +FPSQ[1] : DVCPU && DVCPU.weak ? 30 : 60;
+  var FPSQ = /[?&]fps=(\d+)/.exec(QS), FPS0 = FPSQ ? +FPSQ[1] : 0;   // 7 November 2026 (audit wheel-2, wheel-3): level 0 runs at the display's own rate
   var PERF = window.DVPerf = { fps: 0, hz: 60, late: 0, calm: true, lv: 0, q: 1, w: 0, h: 0, gpu: "pre-rendered bitmaps, no GL", busy: 0, long: 0, est: 0, cpu: 1, design: "prerender", jobs: [] };
   var useG = !!(window.gsap && window.gsap.ticker);
   var ric = window.requestIdleCallback ? function (f) { return window.requestIdleCallback(f); } : null;
@@ -115,7 +115,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   function idleTick(dl) { if (!est.on) return; est.idle += Math.min(dl.timeRemaining(), 50); ric(idleTick); }
   function estWake(ms) { var t = now(); if (t + ms > est.until) est.until = t + ms; if (ric && !est.on) { est.on = true; est.have = false; est.idle = 0; est.t = t; ric(idleTick); } }
   var gov = {
-    level: 0, base: 0, calm: 0, upAt: 0, win: [], longs: [], cadN: 0, cadLate: 0,
+    level: 0, base: 0, calm: 0, upAt: 0, overN: 0, win: [], longs: [], cadN: 0, cadLate: 0,
     work: function (ms) { this.win.push(now(), ms); },
     sum: function (a) { var t = now() - 1000, i = 0, s = 0; while (i < a.length && a[i] < t) i += 2; if (i) a.splice(0, i); for (var j = 1; j < a.length; j += 2) s += a[j]; return s / 1000; },
     fps: function () { return this.level === 0 ? (FPS0 || 240) : PAGE_FPS[this.level]; },
@@ -131,7 +131,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
       var run = function () { var t = now(), x = 0; for (var i = 0; i < 400000; i++) x += Math.sqrt(i) * 1.0001 + (i & 7); return now() - t + (x < 0 ? 1 : 0); }, r = [];
       if (!DVCPU) { for (var k = 0; k < 4; k++) r.push(run()); r = r.slice(1).sort(function (a, b) { return a - b; }); } else r = [0, 0, 0];
       var cpu = DVCPU ? DVCPU.cpu : Math.min(r[0], r[1], r[2]) / 0.5; PERF.cpu = +cpu.toFixed(1);
-      this.base = cpu > 12 ? 2 : cpu > 3 || (DVCPU && DVCPU.weak) ? 1 : 0; if (this.base) this.set(this.base);
+      this.base = cpu > 12 ? 1 : 0; if (this.base) this.set(this.base);   // 7 November 2026: only a very slow device starts a level down (it used to be any 'weak' score, two levels for a slow one)
     },
     check: function () {      // every half second
       var t = now(), b = this.sum(this.win), s = this.sum(this.longs), late = this.cadN > 6 ? this.cadLate / this.cadN : 0, busy = -1;
@@ -140,9 +140,11 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
       PERF.est = busy < 0 ? 0 : Math.round(busy * 100); PERF.gpu = "pre-rendered bitmaps, page busy " + (busy < 0 ? "idle" : PERF.est + "%") + ", wheel " + PERF.busy + "%";
       if (t - T_BOOT < 3000) return;                                      // the page is still loading
       var over = busy >= 0 ? busy > 0.72 : (b > 0.1 || s > 0.4 || late > 0.3), way = busy > 0.9 ? 2 : 1;   // the idle-time estimate reads 5 to 15 points above the thread's real share, more at low frame rates
-      if (over) { this.calm = 0; if (this.level < 3 && t - this.upAt > 900) { this.upAt = t; this.set(Math.min(3, this.level + way)); } }
-      else if (busy >= 0 ? busy < 0.4 : (b < 0.04 && s < 0.12 && late < 0.1)) { if (++this.calm >= 16 && this.level > this.base) { this.calm = 0; this.set(this.level - 1); } }
-      else this.calm = 0;
+      // 7 November 2026 (audit wheel-1): two over-budget readings in a row before a step down (one busy half-second used to do it), one level at a time unless the
+      // page is far over, and back up after 4 s of calm, with the calm threshold nearer the over one so the level no longer sticks between them
+      if (over) { this.calm = 0; if (++this.overN >= 2 && this.level < 3 && t - this.upAt > 900) { this.overN = 0; this.upAt = t; this.set(Math.min(3, this.level + way)); } }
+      else if (busy >= 0 ? busy < 0.55 : (b < 0.06 && s < 0.2 && late < 0.15)) { this.overN = 0; if (++this.calm >= 8 && this.level > this.base) { this.calm = 0; this.set(this.level - 1); } }
+      else { this.calm = 0; this.overN = 0; }
     },
   };
   var stillByGov = false;
@@ -760,7 +762,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     hoverMark(i); setHover();
     if (i < 0) { if (hintEl) hintEl.classList.remove("show"); return; }
     if (i >= 100) showHint(e, i === 100 && reached >= 8 ? "<b>The bow</b>Open" : "<b>Sealed</b>A truth");
-    else { var c = CH.filter(function (x) { return x.n === i + 1; })[0]; showHint(e, c ? "<b>" + c.title + "</b>Chapter " + WORDS[i + 1] + (i < reached ? " · lit" : "") : "<b>Sealed</b>Chapter " + WORDS[i + 1]); }
+    else { var c = CH.filter(function (x) { return x.n === i + 1; })[0]; showHint(e, c ? "<b>" + String(c.title).replace(/[&<>"]/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]; }) + "</b>Chapter " + WORDS[i + 1] + (i < reached ? " · lit" : "") : "<b>Sealed</b>Chapter " + WORDS[i + 1]); }
   }
   function nav(path, hash) { if (window.DVNav) window.DVNav(path); else location.hash = hash; }
   function onClick(e) {
@@ -848,12 +850,22 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
   function touchInput() { lastInput = now(); estWake(3000); if (idleFrozen) { idleFrozen = false; syncMotion(); } if (calmBits & 1) calmWhy(1, false); }
 
   // ---------- the palette: the eclipse crosses, the other palette's bitmaps are fetched and swapped in under it ----------
-  function onPaletteAttr() {
-    var target = palName(); if (target === PAL_NOW) return;
+  // 7 November 2026 (launch audit wheel-4, wheel-5, wheel-9): the page asks for the other palette's bitmaps at the click (prefetchPalette), so they are usually decoded before
+  // the eclipse's midpoint; a swap that a later switch has overtaken is dropped (palTok), so two quick switches can no longer leave the wheel in the wrong colours; a new
+  // eclipse cancels one still running; and a failed fetch keeps the wheel in its current colours and lets the next switch try again, instead of removing the wheel for the visit.
+  var palTok = 0, eclAnim = null;
+  function palJobs(target) {
     var sizes = KEYS.filter(function (k) { return ready[k]; }), want = sizes.length ? sizes : wantSizes(need());
     var hadTear = !!TEAR[PAL_NOW];
-    var jobs = want.map(function (k) { return loadSet(target, k); }).concat([loadAura(target), hadTear ? loadTear(target) : Promise.resolve()]);
+    return { want: want, jobs: want.map(function (k) { return loadSet(target, k); }).concat([loadAura(target), hadTear ? loadTear(target) : Promise.resolve()]) };
+  }
+  function forgetLoads(pal) { KEYS.forEach(function (k) { delete loadP[pal + k]; }); }
+  function prefetchPalette(p) { var target = p === "grahan" ? "grahan" : "akash"; if (target === PAL_NOW) return; try { Promise.all(palJobs(target).jobs).catch(function () { forgetLoads(target); }); } catch (e) {} }
+  function onPaletteAttr() {
+    var target = palName(), tok = ++palTok; if (target === PAL_NOW) return;
+    var pj = palJobs(target), want = pj.want, jobs = pj.jobs;
     Promise.all(jobs).then(function () {
+      if (tok !== palTok || palName() !== target) return;
       var wait = Math.max(0, eclipseAt + 720 - now());
       var swap = function () {
         PAL_NOW = target; committing = {}; KEYS.forEach(function (k) { ready[k] = false; });
@@ -862,8 +874,8 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
         tearWarm = {};
         var old = target === "akash" ? "grahan" : "akash"; SETS[old] = null; AURA[old] = null; TEAR[old] = null; KEYS.forEach(function (k) { delete loadP[old + k]; });   // the old palette's bitmaps are let go
       };
-      if (wait > 0 && now() - eclipseAt < 2500) setTimeout(swap, wait); else swap();
-    }).catch(fail);
+      if (wait > 0 && now() - eclipseAt < 2500) setTimeout(function () { if (tok === palTok && palName() === target) swap(); }, wait); else swap();
+    }).catch(function (e) { forgetLoads(target); if (window.console) console.warn("wheel: the other colours could not be loaded; the wheel keeps its own", e); });
   }
   function installAura(pal) {
     var a = AURA[pal]; if (!a) return; var info = a.info, h = info.half * UPU;
@@ -900,11 +912,14 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     leave: function () {},
     sub: function (name) { if (page !== "home" || menuOpen) return; var key = name === "index" ? "home:index" : name === "four" ? "home:four" : "home"; if (key !== state) goState(key); },
     menu: function (open) { menuOpen = open; if (open) warmTear(); goState(pageState()); },
-    eclipse: function () {
-      if (reduced()) return; eclipseAt = now();
+    prefetchPalette: function (p) { prefetchPalette(p); },
+    eclipse: function () {   // true when an eclipse is drawn (the page then waits for it); false when nothing is shown
+      if (reduced()) return false; eclipseAt = now();
       var d = 2 * 1.6 * S.r; eclEl.style.width = eclEl.style.height = d.toFixed(0) + "px"; eclEl.style.left = (S.cx - d / 2).toFixed(0) + "px"; eclEl.style.top = (S.cy - d / 2).toFixed(0) + "px"; eclEl.style.opacity = 1;
       var a = eclEl.animate([{ transform: "translateX(" + (-3.2 * S.r).toFixed(0) + "px)" }, { transform: "translateX(" + (3.2 * S.r).toFixed(0) + "px)" }], { duration: 1500, easing: "cubic-bezier(.45,0,.55,1)" });
-      a.onfinish = function () { eclEl.style.opacity = 0; };
+      if (eclAnim) { try { eclAnim.cancel(); } catch (e) {} } eclAnim = a;
+      a.onfinish = function () { if (eclAnim === a) { eclEl.style.opacity = 0; eclAnim = null; } };
+      return true;
     },
     light: function (n) { onProgress(); touchInput(); var p = polar(R_ORB, (n - 1) * SEG); flareAt(p[0], p[1], 1.2, 2000); },
     _scene: function (def) { SC._dbg = Object.assign({ x: 0.5, y: 0.5, r: 0.4, neb: 0.75, rings: 1, pts: 1, tear: 0 }, def); page = "_dbg"; goState("_dbg", true); apply(); },

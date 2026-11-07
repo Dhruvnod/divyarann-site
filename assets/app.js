@@ -144,7 +144,7 @@
       <ol class="toc">${C.chapters.map((c) => `
         <li class="toc-row${DVR.isRead(c.n) ? " is-read" : ""}" data-n="${c.n}"><a href="/read/${c.n}/">
           <span class="toc-n">Chapter ${WORDS[c.n]}</span><span class="toc-t">${esc(c.title)}</span><span class="toc-d" lang="hi">${esc(c.deva)}</span>
-          <span class="toc-s">${esc(c.summary)}</span><span class="toc-m">${esc(c.pov)} · ${c.minutes} min${DVR.isRead(c.n) ? " · lit" : ""}${BM[c.n] ? " · bookmarked" : ""}</span></a></li>`).join("")}
+          <span class="toc-s">${esc(DVR.isRead(c.n) ? c.summary : (c.teaser || ""))}</span><span class="toc-m">${esc(c.pov)} · ${c.minutes} min${DVR.isRead(c.n) ? " · lit" : ""}${BM[c.n] ? " · bookmarked" : ""}</span></a></li>`).join("")}
         ${C.next ? `<li class="toc-row is-locked"><span><span class="toc-n">Chapter ${WORDS[C.next.n]}</span><span class="toc-t">Sealed</span><span class="toc-s">${esc(nextLine())}</span></span></li>` : ""}
       </ol>${follow()}${foot()}`;
   }
@@ -276,7 +276,7 @@
     if (devClass) return devClass;
     const q = new URLSearchParams(location.search).get("dev"), gpu = gpuName || "", cpu = window.DVCPU || {}, gov = window.DVPerf || {};
     const cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 8;
-    const phone = matchMedia("(pointer: coarse)").matches;     // a touch screen, not a small window (31 October: a laptop's browser under 700 px tall counted as a phone)
+    const phone = matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 820);     // a touch screen (Samsung's count as a fine pointer: audit city-3), not a small window (31 October: a laptop's browser under 700 px tall counted as a phone)
     const soft = /swiftshader|basic render|llvmpipe|software/i.test(gpu);
     const discrete = /nvidia|geforce|quadro|rtx|gtx|radeon rx|radeon pro|apple m\d|arc\(tm\) a|arc a\d/i.test(gpu);
     const slow = (cpu.cpu || 0) > 8 || (gov.lv || 0) >= 2;
@@ -667,6 +667,8 @@
         .catch(() => { loading = null; });   // offline or undecodable: the cues still work, and the next time the sound is turned on it tries again
     }
     document.addEventListener("visibilitychange", () => { if (!ac || !on) return; if (document.hidden) ac.suspend(); else ac.resume(); });
+    // 7 November 2026 (audit app-5): a phone's pointerdown is no user activation, so a context made by the hold stays suspended; the lifting finger resumes it
+    ["touchend", "pointerup", "click", "keydown"].forEach((t) => document.addEventListener(t, () => { if (ac && on && ac.state === "suspended" && !document.hidden) ac.resume(); }, { passive: true, capture: true }));
     function blip(f, dur, v, type) { if (!on || !ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = type || "sine"; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05); }
     function whoosh(up) { if (!on || !ac) return; const t = ac.currentTime, len = 0.9, b = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = b; f.type = "bandpass"; f.Q.value = 2.5; f.frequency.setValueAtTime(up ? 300 : 2200, t); f.frequency.exponentialRampToValueAtTime(up ? 2200 : 300, t + len);
@@ -726,7 +728,7 @@
   let scrollDirty = true, frameRaf = 0;
   function frame() { if (!scrollDirty) return; scrollDirty = false; curY = lenis ? lenis.scroll : window.scrollY; frameHooks.forEach((f) => f(curY)); }
   window.DVScroll = () => curY;   // the scroll position as of this frame, for the wheel: reading scrollY after writes forces a style recalc
-  window.addEventListener("scroll", () => { scrollDirty = true; if (!gs && !frameRaf) frameRaf = requestAnimationFrame(() => { frameRaf = 0; frame(); }); }, { passive: true });
+  window.addEventListener("scroll", () => { scrollDirty = true; if (!gs && !frameRaf) frameRaf = requestAnimationFrame(() => { frameRaf = 0; frame(); }); else if (window.DVScrollWake) window.DVScrollWake(); }, { passive: true });
   // ScrollTrigger keeps a requestAnimationFrame loop of its own running for ever (its "rAF bug fix", for Safari's momentum scrolling): a frame at every vsync
   // whatever the page does, which also makes every running animation cost a main-thread frame per vsync. It now runs while the page is in use (any input, any
   // scrolling, including momentum) and is parked while the page rests. The callback is recognised by name; if a newer ScrollTrigger renames it, nothing changes.
@@ -736,7 +738,26 @@
   if (gs && ST) {
     gs.registerPlugin(ST); ST.config({ ignoreMobileResize: true }); gs.ticker.lagSmoothing(0); gs.ticker.fps(PAGE_FPS);
     if (window.Lenis && !reduceMQ.matches) { lenis = new window.Lenis({ lerp: 0.1, anchors: false }); lenis.on("scroll", ST.update); window.DVLenis = lenis; }
-    gs.ticker.add((t) => { if (lenis) lenis.raf(t * 1000); frame(); }, false, true);   // prioritised: before GSAP renders this frame's tweens
+    // 7 November 2026 (launch audit app-1, wheel-1): Lenis and the scroll hooks used to run on the GSAP ticker, which is held at 60 fps and stepped down to 30 or 15 by the
+    // wheel's governor, so on a 144 Hz panel or a busy integrated GPU the scroll moved every 33 to 67 ms. They now have their own loop at the display's own rate, which runs
+    // only while there is scrolling to do (any wheel, touch, key or scroll event wakes it; it stops after half a second with nothing to move), so the resting page still costs nothing.
+    let sRaf = 0, sIdle = 0;
+    const sLoop = (t) => {
+      sRaf = 0;
+      if (lenis) lenis.raf(t);
+      const moving = !!lenis && (lenis.isScrolling || Math.abs(lenis.velocity || 0) > 0.01);
+      const dirty = scrollDirty; frame();
+      sIdle = moving || dirty ? 0 : sIdle + 1;
+      if (sIdle < 30) sRaf = rawRAF(sLoop);
+    };
+    const sWake = () => { sIdle = 0; if (!sRaf) sRaf = rawRAF(sLoop); };
+    window.DVScrollWake = sWake;
+    ["wheel", "touchstart", "touchmove", "keydown", "pointerdown", "scroll"].forEach((ev) => window.addEventListener(ev, sWake, { passive: true, capture: true }));
+    if (lenis) {
+      const st = lenis.scrollTo.bind(lenis); lenis.scrollTo = (...a) => { sWake(); return st(...a); };
+      if (lenis.resize) { const rs = lenis.resize.bind(lenis); lenis.resize = (...a) => { sWake(); return rs(...a); }; }
+    }
+    sWake();
   }
   // the ticker sleeps while the page rests and nothing is animating (PERF 3); it wakes on any input, and GSAP wakes it by itself when a tween is made
   function trySleep() {
@@ -1299,16 +1320,28 @@
     else if (root.classList.contains("tools-open")) { closeTools(); toolsBtn.focus({ preventScroll: true }); }
   });
   $("#skip").addEventListener("click", (e) => { e.preventDefault(); view.focus(); });   // the in-page link would otherwise be taken for a page change
+  // 7 November 2026 (launch audit app-2, app-3): the choice is compared with the pending one, not the attribute that is written 350 ms later (a quick second click was lost or
+  // doubled the eclipse), the wheel starts fetching the other colours at the click, or as the pointer reaches the button (it used to start 350 ms later and often swapped after
+  // the eclipse had passed), and the colours change at once when no eclipse is drawn (reduced motion, a still page, no wheel)
+  let palTarget = null, palTimer = 0;
   function setPalette(p, fromAccount) {
-    if ((root.getAttribute("data-palette") || "akash") === p) return;
-    if (window.DVGL) window.DVGL.eclipse();
+    const cur = palTarget || root.getAttribute("data-palette") || "akash";
+    if (cur === p) return;
+    palTarget = p; clearTimeout(palTimer);
+    if (window.DVGL && window.DVGL.prefetchPalette) window.DVGL.prefetchPalette(p);
+    const shown = !!(window.DVGL && window.DVGL.eclipse && window.DVGL.eclipse());
     // the colours change in one step behind the wheel's eclipse: with the page's colour transitions left on, about seventy elements each animated
     // their own colours frame by frame (a slow phone dropped frames for two seconds, 2026-10-26)
-    setTimeout(() => { root.classList.add("pal-switching"); if (p === "grahan") root.setAttribute("data-palette", "grahan"); else root.removeAttribute("data-palette"); requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("pal-switching"))); }, 350);
+    const apply = () => { palTimer = 0; root.classList.add("pal-switching"); if (palTarget === "grahan") root.setAttribute("data-palette", "grahan"); else root.removeAttribute("data-palette"); palTarget = null; requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("pal-switching"))); };
+    if (shown) palTimer = setTimeout(apply, 350); else apply();
     document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === p))); try { localStorage.setItem("divyarann-palette", p); } catch (e) {}
     if (!fromAccount) { prefsTouched(); sound.tick(); }
   }
-  document.querySelectorAll(".pal button").forEach((b) => b.addEventListener("click", () => setPalette(b.dataset.p)));
+  document.querySelectorAll(".pal button").forEach((b) => {
+    b.addEventListener("click", () => setPalette(b.dataset.p));
+    const pre = () => { if (window.DVGL && window.DVGL.prefetchPalette) window.DVGL.prefetchPalette(b.dataset.p); };
+    b.addEventListener("pointerenter", pre, { passive: true }); b.addEventListener("focus", pre);
+  });
   if (root.getAttribute("data-palette") === "grahan") document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === "grahan")));
   $("#sndBtn").addEventListener("click", () => sound.set(!sound.on));
 
@@ -1361,6 +1394,7 @@
   }
   function runIntro() {
     const returning = root.classList.contains("returning"), n = DVR.reached();
+    if (window.DV_FAILSAFE) { if (window.DVGL) window.DVGL.intro(true); enter(false); return; }   // 7 November 2026 (audit shell-1): the head's failsafe already hid the threshold (app.js was late): go straight in
     $("#introLabel").textContent = "of 18 lit";
     if (window.DVGL) window.DVGL.intro(returning);
     if (!gs || reduced()) { iWhole(); $("#introNum").textContent = pad(n); if (returning) setTimeout(() => enter(false), 300); else hold.classList.add("ready"); return; }
@@ -1496,7 +1530,7 @@
     // ---- the account window ----
     const G = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
     const win = document.createElement("div");
-    win.className = "acct"; win.id = "acct"; win.hidden = true;
+    win.className = "acct"; win.id = "acct"; win.hidden = true; win.setAttribute("data-lenis-prevent", "");   // it scrolls while Lenis is stopped (audit shell-2)
     win.setAttribute("role", "dialog"); win.setAttribute("aria-modal", "true"); win.setAttribute("aria-labelledby", "acctT");
     win.innerHTML = `<div class="acct-in">
       <button type="button" class="acct-x" data-close aria-label="Close">×</button>
