@@ -216,6 +216,395 @@
   const author = () => `<section class="page-head"><h1 class="page-title">${esc(C.author)}</h1></section>
       <section class="about">${paras(C.authorBio) || "<p>A few words from the author are on their way.</p>"}<p>Write to hello@divyarann.com.</p></section>${foot()}`;
   const sealedPage = (kick, title, line) => `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}</p></section>${foot()}`;
+  // ---------- the Seven Tears atlas (/tears/) ----------
+  // Dwarka at night opens from Chapter One (the city view, atlas city.js: our own map of the sector grid, the places the author has pinned and the characters' journeys); the globe (atlas.js, the stations
+  // and the seven concentrations) opens from Chapter Two, with a way down into Dwarka. Since 29 October the page opens any of seven cities: Dwarka's tear is marked from Chapter Six and the other six cities
+  // (each its own config and city file, src/city/<id>.json) open from their own chapter, each from its marker on the globe or from /tears/#<id>. The build writes into C.atlas, C.city and C.cities only what the
+  // released chapters give, and the page shows what the reader has reached. The three.js code is fetched only when this page mounts and is taken down when it is left (pageLeave); a city's file is fetched only
+  // when that city is opened; the lists, the cards and the plain fallback are here.
+  const dwarkaId = () => ((C.city || {}).config || {}).id || "dwarka";
+  const cityBlock = (id) => (C.city && id === dwarkaId() ? C.city : ((C.cities || {})[id] || null));
+  const tearUp = (id) => { const B = cityBlock(id), t = B && B.config && B.config.tear; return !!(t && t.placed !== false && t.crack !== false && DVR.reached() >= (t.ch || 99)); };   // its crack in the sky is drawn
+  const cityIdOf = (f) => String(f.id).replace(/^city-/, "");
+  const tearsOpen = () => { const A = C.atlas, r = DVR.reached(); return A && A.features ? A.features.filter((f) => f.ch <= r).map((f) => (f.tear && (f.tearCh || 0) > r ? (({ tear, ...g }) => g)(f) : f)) : []; };
+  const tearsFill = (s, o) => String(s).replace(/\{(\w+)\}/g, (m, k) => (k in o ? o[k] : m));
+  const tearsWords = () => (C.atlas.copy.tears || {});
+  const cityWords = (id) => ((C.atlas.copy.cities || {})[id] || {});
+  const cityMetaOf = (f) => {   // "Country · Tear · Chapter N": where it is, and that a tear has opened there (a draft position says so)
+    const A = C.atlas, T = tearsWords(), id = cityIdOf(f), base = id === dwarkaId() ? A.copy.city.globeMeta : cityWords(id).place;
+    const tear = f.tear ? (f.tear.draft ? T.metaDraft : tearsFill(T.meta, { chapter: WORDS[f.tearCh || f.ch] })) : "";
+    return [base, tear].filter(Boolean).join(" · ");
+  };
+  const tearsMeta = (f) => { const m = C.atlas.copy.meta; return f.kind === "city" ? cityMetaOf(f) : [f.uncertain ? m.uncertain : m[f.kind], tearsFill(m.chapter, { chapter: WORDS[f.ch] })].join(" · "); };
+  const cityOpen = () => {
+    const K = C.city, r = DVR.reached(); if (!K) return null;
+    // an event layer's events and the marks they leave (C.city.events, Dwarka's only), cut to the chapters the reader has reached; a mark whose place does not ship is listed with the places, small and without a beam
+    // 5 November: the figures and the aircraft are cut to the reader's chapter too, and they or a damage stage the reader has reached start the layer by themselves (before, only events or marks
+    // did, so a reader before the column's chapters had none of the approved figures, aircraft or damage)
+    const E = K.events, ev = E ? { ...E, list: E.list.filter((e) => e.ch <= r), marks: E.marks.filter((m) => m.ch <= r), figures: (E.figures || []).filter((f) => f.ch <= r), air: (E.air || []).filter((a) => a.ch <= r) } : null;
+    const any = ev && (ev.list.length || ev.marks.length || ev.figures.length || ev.air.length || ((E.damage && E.damage.stages) || []).some((s) => s.ch <= r));
+    const extra = E ? E.places.filter((p) => p.ch <= r).map((p) => ({ ...p, cls: "is-trace", beam: false })) : [];
+    return { places: K.places.filter((p) => p.ch <= r).concat(extra), paths: K.paths.filter((p) => p.ch <= r), chars: K.characters.filter((c) => c.ch <= r), events: any ? ev : null };
+  };
+  const cityCopy = () => C.atlas.copy.city;
+  // The city's file and code are asked for as soon as the page is made (a Chapter One reader's page opens on the city, and so does #<id>), in step with each other instead of one after the other: the file
+  // does not wait for three.js to load and run, and the libraries' own chain (city.js, then three.js, then its core) is flattened with modulepreload. Nothing here runs before the page's first paint
+  // has what it needs: these are only requests, and the post stack and the ambient occlusion are fetched later still, by the module, after its first frame. Only the city that opens first is asked for.
+  // 29 October: a city chosen on the globe (its card shown) is asked for too, so that "Fly down" finds it on hand (a newer choice replaces an older one; a reader who asked the browser to save data is not)
+  let cityPrime = null;
+  const saveData = () => { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); };
+  function primeCity(id) {
+    const K = cityBlock(id), M = C.city && C.city.module;
+    if ((cityPrime && cityPrime.id === id) || !K || !M || typeof DecompressionStream !== "function" || !window.WebGL2RenderingContext) return;
+    cityPrime = { id, file: fetch(K.file).catch(() => null) };
+    let im = {}; try { im = JSON.parse(document.querySelector('script[type="importmap"][data-atlas]').textContent).imports || {}; } catch (e) {}
+    const core = Object.keys(im).find((k) => /\/three\.core\.js$/.test(k));
+    const lay = id === dwarkaId() && (cityOpen() || {}).events ? (C.city.layers || []).map((m) => M.replace("city.js", m)) : [];   // Dwarka's event layer's module, when the reader has reached its events
+    [M, M.replace("city.js", "city_data.js"), M.replace("city.js", "city_shaders.js"), ...lay, im.three, core && im[core], im["three/addons/controls/OrbitControls.js"]].filter(Boolean).forEach((href) => {
+      const l = document.createElement("link"); l.rel = "modulepreload"; l.href = href; document.head.appendChild(l);
+    });
+  }
+  const takeCityFile = (id) => { const f = cityPrime && cityPrime.id === id ? cityPrime.file : null; if (f) cityPrime.file = null; return f || undefined; };   // used once: a second visit reads the browser's cache
+
+  /* ---------- what the device can afford (29 October): one class for the globe and the city ----------
+     strong: a discrete GPU, six cores or more and a CPU the site does not call weak (the look as it was: the globe's tile detail 3, the city's high tier); mid: an integrated GPU (Intel, AMD's APU
+     graphics, Apple's in Safari) or a weak CPU on a computer (detail 4, the city's mid tier, a lower pixel ratio); phone: a touch screen or a small one (as before: detail 4.5, no post); low: software
+     rendering, a phone with a weak CPU, little memory or four cores, a very slow CPU, or the site's own governor already two steps down (detail 6 at one device pixel per CSS pixel, no post).
+     The GPU's name comes from the WebGL check below (no context of its own). ?dev=strong|mid|phone|low forces a class, for measuring. */
+  let gpuName = null, devClass = null;
+  function deviceClass() {      // decided once, when the first map opens (the site's governor level is read then: later it rises with the maps' own loading, and a city opened mid-dive got the lightest tier)
+    if (devClass) return devClass;
+    const q = new URLSearchParams(location.search).get("dev"), gpu = gpuName || "", cpu = window.DVCPU || {}, gov = window.DVPerf || {};
+    const cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 8;
+    const phone = matchMedia("(pointer: coarse)").matches;     // a touch screen, not a small window (31 October: a laptop's browser under 700 px tall counted as a phone)
+    const soft = /swiftshader|basic render|llvmpipe|software/i.test(gpu);
+    const discrete = /nvidia|geforce|quadro|rtx|gtx|radeon rx|radeon pro|apple m\d|arc\(tm\) a|arc a\d/i.test(gpu);
+    const slow = (cpu.cpu || 0) > 8 || (gov.lv || 0) >= 2;
+    let cls = soft || slow ? "low" : phone ? (cpu.weak || mem <= 3 || cores <= 4 ? "low" : "phone") : discrete && !cpu.weak && cores >= 6 ? "strong" : "mid";
+    if (["strong", "mid", "phone", "low"].includes(q)) cls = q;
+    return (devClass = { cls, gpu, phone, cpu: cpu.cpu || 0, cores, mem, level: gov.lv || 0 });
+  }
+
+  /* ---------- the seamless entry (29 October): one continuous move between the globe and a city ----------
+     The plans (divePlan, climbPlan: the path, its timing, the gate, the blur) are in atlas.js, which only /tears/ loads; the page below runs them (dive, toGlobe). */
+  const wait = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+  // which city the address names (#dwarka, or another city's id), if the reader has reached it: Dwarka opens from Chapter One, the others when their marker has opened on the globe
+  const hashCity = (feats) => { let h = ""; try { h = decodeURIComponent(location.hash.replace(/^#/, "")); } catch (e) {} return h && (h === dwarkaId() || (feats || tearsOpen()).some((f) => f.kind === "city" && cityIdOf(f) === h)) ? h : ""; };
+  function tearsPage() {
+    const A = C.atlas, K = C.city, cc = A && A.copy && A.copy.city, r = Math.min(DVR.reached(), C.released);
+    if (!A || !K || !cc) {   // a build without the city: the earlier page (the globe from Chapter Two)
+      const feats0 = tearsOpen();
+      if (!feats0.length) return sealedPage("", "The Seven Tears", "The sky has not opened yet. This atlas fills in as the story reaches the tears.");
+    }
+    if (K && r < 1) return sealedPage("", "The Seven Tears", esc(cc.sealed));
+    const open = tearsOpen(), T = tearsWords();
+    const feats = open.filter((f) => f.kind !== "city"), hasGlobe = open.length > 0, cityF = open.find((f) => f.kind === "city" && cityIdOf(f) === dwarkaId());
+    const tearFs = open.filter((f) => f.kind === "city" && f !== cityF);
+    const glyph = (f) => `<i class="tl-glyph ${f.kind === "station" ? "is-station" : "is-conc" + (f.uncertain ? " is-faint" : "")}" aria-hidden="true"></i>`;
+    const group = (k) => {
+      const fs = feats.filter((f) => f.kind === k); if (!fs.length) return "";
+      return `<div><h2 class="u-k tl-group">${esc(A.copy.groups[k])}</h2><ul class="tl-list" aria-label="${esc(A.copy.groups[k])}">${fs.map((f) => `<li><button type="button" class="tl-item" data-id="${esc(f.id)}" aria-pressed="false">${glyph(f)}<span class="tl-name">${esc(f.name)}</span><span class="tl-meta">${esc(tearsMeta(f))}</span></button><p class="tl-text">${esc(f.text)}</p></li>`).join("")}</ul></div>`;
+    };
+    const cityGlyph = (f) => `<i class="tl-glyph is-city${f.tear ? " is-tear" + (f.tear.draft ? " is-draft" : "") : ""}" aria-hidden="true"></i>`;
+    const cityItem = (f) => `<li><button type="button" class="tl-item" data-id="${esc(f.id)}" aria-pressed="false">${cityGlyph(f)}<span class="tl-name">${esc(f.name)}</span><span class="tl-meta">${esc(tearsMeta(f))}</span></button><p class="tl-text">${esc(f.text)}</p></li>`;
+    const legend = [["station", feats.some((f) => f.kind === "station"), { kind: "station" }], ["concentration", feats.some((f) => f.kind === "concentration"), { kind: "concentration" }],
+      ["uncertain", feats.some((f) => f.uncertain), { kind: "concentration", uncertain: true }]].filter((l) => l[1]).map((l) => `<li>${glyph(l[2])}${esc(A.copy.legend[l[0]])}</li>`).join("")
+      + (open.some((f) => f.tear) && T.legend ? `<li><i class="tl-glyph is-city is-tear" aria-hidden="true"></i>${esc(T.legend)}</li>` : "") + (open.some((f) => f.tear && f.tear.draft) && T.legendDraft ? `<li><i class="tl-glyph is-city is-tear is-draft" aria-hidden="true"></i>${esc(T.legendDraft)}</li>` : "");
+    const lede = (cc.ledes.filter((l) => l.from <= r).pop() || {}).text || "";
+    const globeSide = hasGlobe ? `<div class="side-globe"><div class="atlas-tools"><p class="atlas-hint fine">${esc(A.copy.hint)}</p><ul class="atlas-legend fine" aria-label="Key">${legend}</ul><p><button type="button" class="cta" id="atlasHome">${esc(A.copy.home)}</button></p></div>${cityF ? `<div><h2 class="u-k tl-group">${esc(cc.globeName)}</h2><ul class="tl-list">${cityItem(cityF)}</ul></div>` : ""}${tearFs.length ? `<div><h2 class="u-k tl-group">${esc(T.group || "")}</h2><ul class="tl-list" aria-label="${esc(T.group || "")}">${tearFs.map(cityItem).join("")}</ul></div>` : ""}${group("station")}${group("concentration")}</div>` : "";
+    const o = cityOpen();
+    const startId = hashCity(open) || (!hasGlobe ? dwarkaId() : "");
+    if (K && K.module && startId) primeCity(startId);
+    const chapters = [...new Set(o.paths.map((p) => p.ch).concat(o.events ? o.events.list.map((e) => e.ch) : []))].sort((a, b) => a - b);   // a chapter replays its journeys, its events, or both
+    const cityMeta = (p) => tearsFill(cc.placeMeta, { chapter: WORDS[p.ch] });
+    const hideIf = (id) => (startId && startId !== id ? " hidden" : "");
+    const citySide = `<div class="side-city" data-city="${esc(dwarkaId())}"${hideIf(dwarkaId())}>
+        <div class="atlas-tools"><p class="atlas-hint fine">${esc(cc.hint)}</p>${cc.keys ? `<p class="atlas-hint fine is-keys">${esc(cc.keys)}</p>` : ""}<p class="atlas-btns"><button type="button" class="cta" id="cityHome">${esc(cc.home)}</button>${cc.lookUp && tearUp(dwarkaId()) ? `<button type="button" class="cta city-tear" data-city="${esc(dwarkaId())}">${esc(cc.lookUp)}</button>` : ""}${hasGlobe ? `<button type="button" class="cta" id="cityGlobe">${esc(cc.toGlobe)}</button>` : ""}</p>${!hasGlobe ? `<p class="atlas-hint fine">${esc(cc.globeSealed)}</p>` : ""}</div>
+        ${o.chars.length && o.paths.length ? `<div><h2 class="u-k tl-group">${esc(cc.charactersTitle)}</h2><ul class="city-chars" aria-label="${esc(cc.charactersTitle)}">${o.chars.map((c, i) => `<li><button type="button" class="city-char" data-id="${esc(c.id)}" aria-pressed="true"><i class="city-sw" data-i="${i}" aria-hidden="true"></i><span>${esc(c.name)}</span></button></li>`).join("")}</ul></div>` : ""}
+        ${chapters.length ? `<div><h2 class="u-k tl-group">${esc(cc.chapterTitle)}</h2><div class="city-chips" role="group" aria-label="${esc(cc.chapterTitle)}"><button type="button" class="city-chip" data-ch="0" aria-pressed="true">${esc(cc.all)}</button>${chapters.map((n) => `<button type="button" class="city-chip" data-ch="${n}" aria-pressed="false">${esc(tearsFill(cc.chapterChip, { chapter: WORDS[n] }))}</button>`).join("")}</div></div>` : ""}
+        <div><h2 class="u-k tl-group">${esc(cc.placesTitle)}</h2>${o.places.length ? `<ul class="tl-list city-places" aria-label="${esc(cc.placesTitle)}">${o.places.map((p) => `<li><button type="button" class="tl-item" data-place="${esc(p.id)}" aria-pressed="false"><i class="tl-glyph is-place${p.cls ? " " + esc(p.cls) : ""}" aria-hidden="true"></i><span class="tl-name">${esc(p.name)}</span><span class="tl-meta">${esc(cityMeta(p))}</span></button><p class="tl-text">${esc(p.text)}</p></li>`).join("")}</ul>` : `<p class="atlas-hint fine">${esc(cc.nothingYet)}</p>`}</div>
+        ${o.paths.length ? `<div class="city-lines"><h2 class="u-k tl-group">${esc(cc.trailsTitle)}</h2><ul class="tl-list city-journeys">${o.paths.map((p) => `<li><p class="tl-text"><strong>${esc((K.characters.find((c) => c.id === p.character) || {}).name || "")}</strong> ${esc(p.line)}</p></li>`).join("")}</ul></div>` : ""}
+        ${o.events && o.events.list.length ? `<div class="city-lines city-ev-lines"><h2 class="u-k tl-group">${esc(cc.eventsTitle || "")}</h2>${o.events.list.map((ev) => `<p class="u-k">${esc(tearsFill(cc.chapterChip, { chapter: WORDS[ev.ch] }))}</p><ul class="tl-list">${(ev.captions || []).map((c) => `<li><p class="tl-text">${esc(c.text)}</p></li>`).join("")}</ul>`).join("")}</div>` : ""}</div>`;
+    // the other cities: no places or journeys (the story pins none there), a way home, a way back to the globe, and the names on their maps
+    const geoSide = tearFs.filter((f) => cityBlock(cityIdOf(f))).map((f) => {
+      const id = cityIdOf(f), B = cityBlock(id), words = cityWords(id), labs = (B.config.labels || []).filter((l) => (words.labels || {})[l.id]);
+      return `<div class="side-city side-geo" data-city="${esc(id)}"${hideIf(id)}>
+        <div class="atlas-tools"><p class="atlas-hint fine">${esc(T.hint || cc.hint)}</p>${cc.keys ? `<p class="atlas-hint fine is-keys">${esc(cc.keys)}</p>` : ""}<p class="atlas-btns"><button type="button" class="cta city-home" data-city="${esc(id)}">${esc(cc.home)}</button>${cc.lookUp && tearUp(id) ? `<button type="button" class="cta city-tear" data-city="${esc(id)}">${esc(cc.lookUp)}</button>` : ""}<button type="button" class="cta city-globe" data-city="${esc(id)}">${esc(cc.toGlobe)}</button></p>${f.tear && f.tear.draft && T.draftNote ? `<p class="atlas-hint fine">${esc(T.draftNote)}</p>` : ""}</div>
+        ${labs.length ? `<div><h2 class="u-k tl-group">${esc(T.onMapTitle || "")}</h2><ul class="tl-list city-geo" aria-label="${esc(T.onMapTitle || "")}">${labs.map((l) => `<li><button type="button" class="tl-item" data-geo="${esc(l.id)}" data-city="${esc(id)}" aria-pressed="false"><i class="tl-glyph is-place" aria-hidden="true"></i><span class="tl-name">${esc(words.labels[l.id])}</span><span class="tl-meta">${esc((T.kinds || {})[l.kind] || "")}</span></button></li>`).join("")}</ul></div>` : ""}</div>`;
+    }).join("");
+    return `<section class="atlas" data-mode="${hasGlobe ? "globe" : "city"}" data-globe="${hasGlobe ? 1 : 0}" data-city="${esc(startId || dwarkaId())}">
+      <header class="atlas-head"><p class="kicker"><span>${esc(tearsFill(A.copy.kicker, { chapter: WORDS[r] }))}</span></p><h1 class="page-title">The Seven Tears</h1><p class="page-lede">${esc(lede)}</p></header>
+      <div class="atlas-stage" id="atlasStage"><div class="atlas-view" id="atlasView" data-lenis-prevent><div class="atlas-layer" id="globeHost"></div><div class="atlas-layer city-layer" id="cityHost"></div><p class="atlas-wait">${esc(hasGlobe ? A.copy.wait : cc.wait)}</p><p class="city-tip" id="cityTip" hidden></p></div>
+        <div class="city-bar" id="cityBar" hidden><button type="button" class="cta" id="cityPlay">${esc(cc.play)}</button><input type="range" id="cityScrub" min="0" max="1000" value="1000" aria-label="${esc(cc.scrub)}"><p class="city-cap" id="cityCap" aria-live="polite"></p></div>
+        <div class="atlas-card" id="atlasCard" aria-live="polite" hidden></div></div>
+      <p class="atlas-note" id="atlasNote" role="status"></p>
+      <div class="atlas-side">${globeSide}${citySide}${geoSide}</div>
+    </section>${foot()}`;
+  }
+  let pageLeave = null;   // what the open page must undo when it is left (the renderers, tiles and listeners)
+  function leavePage() { const f = pageLeave; pageLeave = null; if (f) { try { f(); } catch (e) {} } }
+  function webgl2() { try { const gl = document.createElement("canvas").getContext("webgl2"); if (!gl) return false; if (gpuName === null) { const d = gl.getExtension("WEBGL_debug_renderer_info"); gpuName = d ? String(gl.getParameter(d.UNMASKED_RENDERER_WEBGL)) : ""; } const x = gl.getExtension("WEBGL_lose_context"); if (x) x.loseContext(); return true; } catch (e) { return false; } }   // the GPU's name is kept for deviceClass
+  function mountTears() {
+    const host = $("#atlasView"); if (!host) return;   // the sealed page has no map
+    // the atlas follows only the reader's own reduced motion (or ?still=1). The wheel's governor sets dv-still too when a city's loading keeps the thread busy; that freezes the
+    // page's decoration, and must not turn the flights into jump cuts or take Play away until a reload (the city has its own governor, which lowers its quality instead)
+    const reduced = () => reduceMQ.matches || (root.classList.contains("dv-still") && !root.classList.contains("dv-gov-still"));
+    const A = C.atlas, K = C.city, cc = A.copy.city, page = $(".atlas"), card = $("#atlasCard"), stage = $("#atlasStage"), note = $("#atlasNote");
+    const gHost = $("#globeHost"), cHost = $("#cityHost"), bar = $("#cityBar"), tip = $("#cityTip"), scrub = $("#cityScrub"), playBtn = $("#cityPlay"), cap = $("#cityCap");
+    const feats = tearsOpen(), byId = new Map(feats.map((f) => [f.id, f])), gItems = [...view.querySelectorAll(".side-globe .tl-item")];
+    const o = cityOpen(), pById = new Map(o.places.map((p) => [p.id, p])), cItems = [...view.querySelectorAll(".side-city:not(.side-geo) .tl-item")], geoItems = [...view.querySelectorAll(".side-geo .tl-item")];
+    const hasGlobe = page.dataset.globe === "1", pathById = new Map(o.paths.map((p) => [p.id, p]));
+    let globe = null, city = null, dead = false, busy = false, colors = [], globeLoad = 0, cityLoad = 0, cur = page.dataset.city || dwarkaId(), diveTo = dwarkaId();
+    const TS = window.DVTears = { dive: null, device: null };      // for the tests and for looking: the device class both maps were given, and the last dive or climb (its start, when the second picture was ready, when the first was taken down)
+    // the wheel behind the page turns any click that is not on a control into a visit to a chapter (a click on a map would leave the page): clicks on the map stop here
+    host.addEventListener("click", (e) => e.stopPropagation());
+    const nameOf = (id) => ((K.characters.find((c) => c.id === id) || {}).name) || "";
+    const plain = (why) => {   // no map: the same lists, each place with its text, and a short note
+      if (globe) { globe.dispose(); globe = null; } if (city) { city.dispose(); city = null; }
+      page.classList.add("is-plain"); note.textContent = (cc.notes[why] || cc.notes.failed); card.hidden = true; bar.hidden = true;
+      [...gItems, ...cItems, ...geoItems].forEach((b) => b.setAttribute("aria-pressed", "false"));
+    };
+    const bringIntoView = () => {   // a phone: the map is above the lists, so choosing from a list scrolls up to it
+      if (getComputedStyle(stage).position === "sticky") return;
+      const b = stage.getBoundingClientRect(); if (b.top >= 60 && b.bottom <= window.innerHeight) return;
+      const y = window.scrollY + b.top - 70;
+      if (lenis) lenis.scrollTo(y, { immediate: reduced() }); else window.scrollTo({ top: y, behavior: reduced() ? "auto" : "smooth" });
+    };
+    const mode = () => page.dataset.mode;
+    const setMode = (m) => { page.dataset.mode = m; if (m !== "city") { bar.hidden = true; } };
+    // the address follows the city (so a link to /tears/#<id> goes straight in); on the globe it is cleared
+    const setHash = (id) => { try { history.replaceState(history.state, "", location.pathname + location.search + (id ? "#" + id : "")); } catch (e) {} };
+    const setActiveCity = (id) => { cur = id; page.dataset.city = id; view.querySelectorAll(".side-city").forEach((el) => { el.hidden = el.dataset.city !== id; }); };
+    const diveBtn = (f) => {
+      if (!hasGlobe) return "";
+      if (f.kind === "city") return `<p><button type="button" class="cta" id="cardDive">${esc(cityIdOf(f) === dwarkaId() ? cc.toCity : tearsFill(tearsWords().toCity || cc.toCity, { name: f.name }))}</button></p>`;
+      return f.id === "concentration-asia" ? `<p><button type="button" class="cta" id="cardDive">${esc(cc.toCity)}</button></p>` : "";
+    };
+    // ----- the globe (from Chapter Two) -----
+    function selectGlobe(id, fromGlobe) {
+      const f = byId.get(id); if (!f || page.classList.contains("is-plain") || busy) return;
+      gItems.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === id)));
+      diveTo = f.kind === "city" ? cityIdOf(f) : dwarkaId();
+      card.innerHTML = `<p class="u-k">${esc(tearsMeta(f))}</p><h2>${esc(f.name)}</h2><p>${esc(f.text)}</p>${diveBtn(f)}`; card.hidden = false;
+      const d = $("#cardDive"); if (d) { d.addEventListener("click", () => dive(diveTo)); prepareCity(diveTo); }
+      if (globe) globe.select(id);
+      if (!fromGlobe) bringIntoView();
+    }
+    // a card that offers the way down: the city's file and modules are asked for now, and its arrays made in a worker, so the dive finds it ready (29 October). Only the latest choice is kept.
+    let cityPrep = null;
+    function prepareCity(cid) {
+      if (!cid || reduced() || saveData() || !hasGlobe) return;
+      if (globe && globe.prepareBlur) globe.prepareBlur();
+      if (cityPrep && cityPrep.id === cid) return;
+      if (cityPrep) cityPrep.cancel();
+      const B = cityBlock(cid), M = C.city && C.city.module;
+      if (!B || !M || typeof Worker !== "function" || !window.WebGL2RenderingContext) return;
+      primeCity(cid);
+      const rec = cityPrep = { id: cid, handle: null, gone: false, cancel() { this.gone = true; if (this.handle) this.handle.cancel(); } };
+      import(M).then((m) => {
+        if (rec.gone || dead || typeof m.prepare !== "function") return;
+        cityMod = m; rec.handle = m.prepare(B.file, takeCityFile(cid), { hfCell: (B.config || {}).hfCell });
+        // and the city's renderer is made once the globe has come to rest under the card (making a WebGL context waits for the GPU: a stall nobody sees while nothing moves)
+        const rest = () => { if (rec.gone || dead || !globe) return; if (globe.busy && globe.busy()) { setTimeout(rest, 250); return; } if (m.prewarm) m.prewarm(); };
+        setTimeout(rest, 300);
+      }).catch(() => {});
+    }
+    let cityMod = null;
+    const takePrepared = (cid) => { const r = cityPrep; cityPrep = null; if (r && r.id === cid && r.handle) return r.handle; if (r) r.cancel(); return undefined; };
+    gItems.forEach((b) => b.addEventListener("click", () => selectGlobe(b.dataset.id, false)));
+    const gHome = $("#atlasHome"); if (gHome) gHome.addEventListener("click", () => { if (busy) return; gItems.forEach((b) => b.setAttribute("aria-pressed", "false")); card.hidden = true; if (cityPrep) { cityPrep.cancel(); cityPrep = null; } if (cityMod && cityMod.dropSpare) cityMod.dropSpare(); if (globe) globe.home(); });
+    let atlasMod = null;          // the globe's module: it also carries the plans of the moves
+    async function openGlobe(startAt, early, alsoLoad) {
+      if (!hasGlobe) return null;
+      const id = ++globeLoad;
+      if (!A.token) { plain("failed"); return null; }
+      if (!city && !webgl2()) { plain("nowebgl"); return null; }       // so does a running city
+      return import(A.module).then((m) => new Promise((res) => {
+        atlasMod = m;
+        if (dead || id !== globeLoad) return res(null);
+        let ready = false;
+        const c = m.mount(gHost, { features: feats, token: A.token, copy: A.copy, reduced, startAt, alsoLoad, device: (TS.device = deviceClass()), onSelect: (fid) => selectGlobe(fid, true),
+          onFirst: () => { if (early) res(c); }, onReady: () => { ready = true; gHost.classList.add("is-ready"); if (c) c.isReady = true; res(c); }, onFail: (why) => { if (!dead) plain(why); res(null); } });
+        globe = c;
+      })).catch(() => { if (!dead) plain("failed"); return null; });
+    }
+    // ----- the city (from Chapter One) -----
+    function cityCard(html) { card.innerHTML = html; card.hidden = false; }
+    function selectPlace(id, fromCity) {
+      const p = pById.get(id); if (!p || page.classList.contains("is-plain")) return;
+      cItems.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.place === id)));
+      cityCard(`<p class="u-k">${esc(tearsFill(cc.placeMeta, { chapter: WORDS[p.ch] }))}</p><h2>${esc(p.name)}</h2><p>${esc(p.text)}</p>`);
+      if (city) city.select(id);
+      if (!fromCity) bringIntoView();
+    }
+    cItems.forEach((b) => b.addEventListener("click", () => selectPlace(b.dataset.place, false)));
+    // a name on another city's map: the camera flies to it and the card names it
+    function selectGeo(cid, gid) {
+      const B = cityBlock(cid), lb = B && (B.config.labels || []).find((l) => l.id === gid); if (!lb || page.classList.contains("is-plain")) return;
+      geoItems.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.geo === gid && b.dataset.city === cid)));
+      const T = tearsWords(), text = (cityWords(cid).labels || {})[gid] || gid;
+      cityCard(`<p class="u-k">${esc((T.kinds || {})[lb.kind] || "")}</p><h2>${esc(text)}</h2>`);
+      if (city) city.flyTo({ x: lb.x, n: lb.n, dist: lb.dist || 2400, tilt: 56 });
+      bringIntoView();
+    }
+    geoItems.forEach((b) => b.addEventListener("click", () => selectGeo(b.dataset.city, b.dataset.geo)));
+    const charOn = new Map(o.chars.map((c) => [c.id, true]));
+    view.querySelectorAll(".city-char").forEach((b) => {
+      b.addEventListener("click", () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); charOn.set(b.dataset.id, on); if (city) city.setCharacters(charOn); });
+      b.addEventListener("pointerenter", () => { if (city) city.hoverCharacter(b.dataset.id); });
+      b.addEventListener("pointerleave", () => { if (city) city.hoverCharacter(""); });
+      b.addEventListener("focus", () => { if (city) city.hoverCharacter(b.dataset.id); });
+      b.addEventListener("blur", () => { if (city) city.hoverCharacter(""); });
+    });
+    const paintColors = () => { view.querySelectorAll(".city-sw").forEach((s) => { s.style.setProperty("--c", colors[+s.dataset.i] || "var(--accent)"); }); };
+    let chapter = 0;
+    const chips = [...view.querySelectorAll(".city-chip")];
+    function setChapter(n, fromCity) {
+      chapter = n; chips.forEach((c) => c.setAttribute("aria-pressed", String(+c.dataset.ch === n)));
+      bar.hidden = !n || !city; if (city) city.setChapter(n);
+      if (n) { card.hidden = true; scrub.value = "1000"; playBtn.textContent = cc.play; cap.textContent = ""; }
+      if (!fromCity && n) bringIntoView();
+    }
+    chips.forEach((c) => c.addEventListener("click", () => setChapter(+c.dataset.ch, false)));
+    const cityHomeBtn = $("#cityHome"); if (cityHomeBtn) cityHomeBtn.addEventListener("click", () => { cItems.forEach((b) => b.setAttribute("aria-pressed", "false")); card.hidden = true; if (chapter) setChapter(0); if (city) city.home(); });
+    view.querySelectorAll(".city-home").forEach((b) => b.addEventListener("click", () => { geoItems.forEach((g) => g.setAttribute("aria-pressed", "false")); card.hidden = true; if (city) city.home(); }));
+    view.querySelectorAll(".city-tear").forEach((b) => b.addEventListener("click", () => { cItems.forEach((x) => x.setAttribute("aria-pressed", "false")); geoItems.forEach((g) => g.setAttribute("aria-pressed", "false")); card.hidden = true; if (chapter) setChapter(0); if (city && city.lookUp) city.lookUp(); }));
+    playBtn.addEventListener("click", () => { if (!city) return; const st = city.replay(); if (st.playing) city.pause(); else city.play(); });
+    scrub.addEventListener("input", () => { if (city) { const v = +scrub.value / 1000; city.pause(); city.setT(v); } });
+    const onReplay = (s) => {
+      if (+scrub.value !== Math.round(s.t * 1000)) scrub.value = String(Math.round(s.t * 1000));
+      playBtn.textContent = s.playing ? cc.pause : cc.play; if (reduced()) playBtn.hidden = true;
+      const ps = o.paths.filter((p) => p.ch === s.chapter), orders = [...new Set(ps.map((p) => p.order))].sort((a, b) => a - b);
+      const act = city ? city.activeLines(s.t) : [];
+      cap.textContent = act.length ? act.join(" ") : "";
+    };
+    function pickTrail(p) {
+      const q = pathById.get(p.id) || p;
+      cityCard(`<p class="u-k">${esc(tearsFill(cc.trailMeta, { name: nameOf(q.character), chapter: WORDS[q.ch] }))}</p><h2>${esc(q.line)}</h2>`);
+      if (city) city.focusPath(q.id);
+    }
+    let tipX = 0, tipY = 0;
+    host.addEventListener("pointermove", (e) => { const r = host.getBoundingClientRect(); tipX = e.clientX - r.left; tipY = e.clientY - r.top; if (!tip.hidden) { tip.style.transform = `translate3d(${tipX + 14}px, ${tipY + 16}px, 0)`; } });
+    const onHover = (cid, p) => {
+      view.querySelectorAll(".city-char").forEach((b) => b.classList.toggle("is-hot", !!cid && b.dataset.id === cid));
+      if (p) { tip.textContent = `${nameOf(p.character)}: ${p.line}`; tip.hidden = false; tip.style.transform = `translate3d(${tipX + 14}px, ${tipY + 16}px, 0)`; } else tip.hidden = true;
+    };
+    async function openCity(fromGlobe, hold, id, more) {
+      const cid = id || cur, B = cityBlock(cid), M = C.city && C.city.module, loadId = ++cityLoad;
+      if (!B || !M) { plain("failed"); return null; }
+      if (!globe && !webgl2()) { plain("nowebgl"); return null; }      // a running globe already shows WebGL 2 works (the check makes a context of its own: 0.1 s at the start of a dive)
+      const dw = cid === dwarkaId(), words = cityWords(cid), t = B.config && B.config.tear;
+      // Dwarka carries the story's places and journeys; another city only its geography. The tear (a ring and a column of light) is drawn once the reader has reached the chapter it opens in.
+      // Dwarka's event layer (C.city.events and its module) goes only to Dwarka, cut to the reader's chapter; another city never carries it
+      const data = { ...B, ...(dw ? { places: o.places, paths: o.paths, characters: o.chars, events: o.events, layers: o.events ? B.layers || [] : [] } : { events: null, layers: [] }), tear: t && DVR.reached() >= (t.ch || 99) ? { ...t } : null };
+      const labs = (B.config.labels || []).filter((l) => (words.labels || {})[l.id]).map((l) => ({ text: words.labels[l.id], x: l.x, n: l.n, kind: l.kind }));
+      return import(M).then((m) => new Promise((res) => {
+        if (dead || loadId !== cityLoad) return res(null);
+        const c = m.mount(cHost, { data, labels: labs, copy: { ...cc, cityLabel: words.cityLabel || cc.cityLabel }, reduced, sound: () => sound.bus(), from: fromGlobe ? "globe" : "", hold, intro: !fromGlobe, file: takeCityFile(cid),
+          prepared: takePrepared(cid), device: (TS.device = deviceClass()), dive: (more && more.dive) || null, reached: DVR.reached(), onSelect: (pid) => selectPlace(pid, true), onPickTrail: pickTrail, onHover, onReplay,
+          onColors: (cs) => { colors = cs; paintColors(); }, onReady: () => { cHost.classList.add("is-ready"); preloadGlobe(); res(c); }, onFail: (why) => { if (!dead) plain(why); res(null); } });
+        city = c; if (dw) c.setCharacters(charOn);
+      })).catch(() => { if (!dead) plain("failed"); return null; });
+    }
+    // ----- from the globe down into a city, and back (29 October: one continuous move, see divePlan) -----
+    // the city's layer fades over the globe (or the city's away from it) at the plan's meeting point, or at once if the second picture came late; the one left behind is taken down after the fade
+    const viewBox = () => { const r = host.getBoundingClientRect(); return { w: Math.max(1, r.width), h: Math.max(1, r.height) }; };
+    async function crossAt(plan, showCity, after) {
+      const now = performance.now(), F = plan.fadeMs(now);
+      plan.release(now);
+      const start = Math.max(now, plan.handoff() - F / 2);
+      plan.cityFrom = start - 120;                     // the city draws again a few frames before it is seen
+      if (after) await wait(start - now - 160); if (dead) return false;
+      if (after) after();
+      await wait(start - performance.now()); if (dead) return false;
+      cHost.style.transition = `opacity ${F}ms linear`;
+      cHost.classList.toggle("is-on", showCity);
+      await wait(F + 100);
+      if (dead) return false;
+      cHost.style.transition = "";
+      return true;
+    }
+    async function dive(cid) {
+      cid = cid || diveTo || dwarkaId();
+      const B = cityBlock(cid);
+      if (busy || !B || !globe || page.classList.contains("is-plain")) return; busy = true;
+      card.hidden = true; gItems.forEach((b) => b.setAttribute("aria-pressed", "false"));
+      setActiveCity(cid);
+      if (reduced() || !globe.pose || !atlasMod || !atlasMod.divePlan) {            // reduced motion: nothing moves; the city is made behind the globe and takes its place in one cut, at its home view
+        const c = await openCity(false, false, cid);
+        if (dead || !c) { busy = false; return; }
+        cHost.style.transition = "none"; cHost.classList.add("is-on"); setMode("city"); setHash(cid);
+        if (globe) { globe.dispose(); globe = null; } gHost.replaceChildren(); gHost.classList.remove("is-ready");
+        requestAnimationFrame(() => { cHost.style.transition = ""; }); busy = false; return;
+      }
+      // the camera starts down at once, on the plan's path; the city is made (mostly made already, since its card was opened) and joins the move at its fastest moment
+      const plan = atlasMod.divePlan(globe.pose(), B, viewBox());
+      page.classList.add("is-diving"); TS.dive = { cid, at: Math.round(plan.t0), kind: "dive" };
+      globe.follow(plan);
+      const c = await openCity(true, false, cid, { dive: plan });
+      if (dead) return;
+      if (!c) { if (globe) globe.stop(); page.classList.remove("is-diving"); busy = false; return; }   // the note says why (plain)
+      TS.dive.readyAt = Math.round(performance.now());
+      const ok = await crossAt(plan, true, () => { setMode("city"); setHash(cid); });
+      if (!ok) return;
+      page.classList.remove("is-diving");
+      TS.dive.handedAt = Math.round(performance.now());
+      const g0 = globe; globe = null; if (g0 && g0.sleep) g0.sleep();
+      afterMove(plan, () => { if (g0) g0.dispose(); if (!globe) { gHost.replaceChildren(); gHost.classList.remove("is-ready"); } TS.dive.goneAt = Math.round(performance.now()); });
+      busy = false;
+    }
+    // what is left behind a move (the map faded away from) sleeps until the move has arrived, and is taken down then, when the page is idle (or 1.5 s after the plan's end at the latest)
+    function afterMove(plan, fn) {
+      let done = false; const go = () => { if (done) return; done = true; const i = sleepers.indexOf(go); if (i >= 0) sleepers.splice(i, 1); fn(); };
+      sleepers.push(go);
+      const idle = () => { if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 600 }); else setTimeout(go, 50); };
+      const prev = plan.onArrive; plan.onArrive = () => { if (prev) prev(); idle(); };
+      setTimeout(go, Math.max(0, plan.endsAt() - performance.now()) + 1500);
+    }
+    let atlasLoaded = false;
+    const sleepers = [];          // the maps put to sleep behind a move, until they are taken down
+    const preloadGlobe = () => { if (atlasLoaded || !hasGlobe || !A.module) return; atlasLoaded = true; const go = () => { if (!dead) import(A.module).then((m) => { atlasMod = atlasMod || m; }).catch(() => {}); }; if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 1500); };
+    async function toGlobe() {
+      if (busy || !globe && !hasGlobe || !city) return; busy = true;
+      card.hidden = true; if (chapter) setChapter(0);
+      const here = cityBlock(cur);
+      if (!atlasMod && !reduced() && A.module) atlasMod = await import(A.module).catch(() => null);      // usually fetched already, while the city rested
+      if (dead) return;
+      if (reduced() || !city.view || !city.follow || !here || !atlasMod || !atlasMod.climbPlan) {      // reduced motion (or a module without plans): the globe opens at the city's entry and replaces the city in one cut
+        const g = await openGlobe((here && here.config && here.config.globe) || (K.config && K.config.globe) || { lon: 77.043, lat: 28.592, range: 24000, tilt: 8 });
+        if (dead || !g) { busy = false; return; }
+        cHost.classList.remove("is-on"); setMode("globe"); setHash(""); g.home();
+        if (city) { city.dispose(); city = null; } cHost.replaceChildren(); cHost.classList.remove("is-ready");
+        busy = false; return;
+      }
+      // the city climbs at once; the globe opens at the plan's meeting point (its tiles load there meanwhile) and takes the move over as the city fades away from it
+      const plan = atlasMod.climbPlan(city.view(), here, viewBox());
+      plan.cityFrom = 0; city.follow(plan);
+      page.classList.add("is-diving"); TS.dive = { cid: cur, at: Math.round(plan.t0), kind: "climb" };
+      const g = await openGlobe(plan.meeting(), true, [plan.end()]);          // as soon as its first tiles are drawn (then at most 0.7 s more for the finer ones); the end's coarse tiles are fetched beside them
+      if (dead) return;
+      if (!g) { page.classList.remove("is-diving"); busy = false; return; }
+      for (let i = 0; i < 7 && !g.isReady && !dead; i++) await wait(100);
+      TS.dive.readyAt = Math.round(performance.now());
+      const ok = await crossAt(plan, false, () => { g.follow(plan); setMode("globe"); setHash(""); });
+      if (!ok) return;
+      page.classList.remove("is-diving");
+      TS.dive.handedAt = Math.round(performance.now());
+      const c0 = city; city = null; if (c0 && c0.sleep) c0.sleep();
+      afterMove(plan, () => { if (c0) c0.dispose(); if (!city) { cHost.replaceChildren(); cHost.classList.remove("is-ready"); } TS.dive.goneAt = Math.round(performance.now()); });
+      busy = false;
+    }
+    const gb = $("#cityGlobe"); if (gb) gb.addEventListener("click", toGlobe);
+    view.querySelectorAll(".city-globe").forEach((b) => b.addEventListener("click", toGlobe));
+    const onProgress = () => rerender();   // progress arrived from another device (a sign-in): the page is made again for the new chapter
+    window.addEventListener("dvr:progress", onProgress);
+    pageLeave = () => { dead = true; for (const f of sleepers.splice(0)) { try { f(); } catch (e) {} } window.removeEventListener("dvr:progress", onProgress); if (cityPrep) { cityPrep.cancel(); cityPrep = null; } if (cityMod && cityMod.dropSpare) cityMod.dropSpare(); if (globe) { globe.dispose(); globe = null; } if (city) { city.dispose(); city = null; } };
+    // the maps are fetched now, not before
+    const start = hashCity(feats) || (mode() === "city" ? dwarkaId() : "");
+    if (start) { setActiveCity(start); setMode("city"); cHost.classList.add("is-on"); openCity(false, false, start); }
+    else openGlobe();
+  }
+
   function about() {
     return `<section class="page-head"><h1 class="page-title">Divyarann</h1></section>
       <section class="about"><h2>The book</h2><p>DIVYARANN is a trilogy of Indian mythological fantasy set in modern Delhi. Book One, <em>Vinash</em>, is published here as a free web edition, one chapter at a time, while it is being written.</p>
@@ -290,6 +679,7 @@
         const b = $("#sndBtn"); if (b) b.setAttribute("aria-pressed", String(v)); try { localStorage.setItem("divyarann-sound", v ? "1" : "0"); } catch (e) {} },
       get on() { return on; },
       get playing() { return !!track; },
+      bus() { return on && ac && ac.state === "running" ? { ac, out: master } : null; },   // for a page's own sounds (the city's event layer): only while the reader has the sound on
       mode(m) { mode = m; level(2); },
       tick() { blip(1760, 0.07, 0.03); }, light() { blip(880, 2.2, 0.06); blip(1320, 2.6, 0.035); blip(1760, 1.8, 0.02); }, open() { whoosh(true); }, close() { whoosh(false); },
     };
@@ -362,7 +752,7 @@
   const ROUTES = [
     [/^(home)?$/, () => ["home", home()]], [/^chapters$/, () => ["contents", contents()]], [/^ch-(\d+)$/, (m) => (chap(+m[1]) ? ["reader", reader(+m[1]), +m[1]] : ["notfound", +m[1] > C.released && +m[1] <= 26 ? unreleased(+m[1]) : notFound()])],
     [/^codex$/, () => ["codex", codex()]], [/^story$/, () => ["story", story()]],
-    [/^tears$/, () => ["tears", sealedPage("", "The Seven Tears", "The sky has not opened yet. This atlas fills in as the story reaches the tears.")]],
+    [/^tears$/, () => ["tears", tearsPage()]],
     [/^powers$/, () => ["powers", sealedPage("", "Powers", "One energy, latent in everyone, answering what a person is actually resolved to do. Nobody has awakened yet.")]],
     [/^about$/, () => ["about", about()]],
     [/^author$/, () => ["author", author()]],
@@ -399,10 +789,12 @@
     if (!first) unlock.hide();
     if (!first) { window.DVGL && window.DVGL.leave(name); await closeTear(); if (id !== navId) return; }
     if (fromMenu) closeMenu(true);
+    leavePage();
     if (ctx) ctx.revert();
     thread.clear(); { const p = $("#pop"); if (p) p.classList.remove("show"); }
     view.innerHTML = html; view.dataset.page = name;
     root.classList.toggle("on-reader", name === "reader");
+    root.classList.toggle("on-tears", name === "tears");   // the atlas page's bar is solid once scrolled (css)
     document.querySelectorAll(".menu a[data-route]").forEach((a) => { const on = a.dataset.route === name || (name === "reader" && a.dataset.route === "contents"); a.classList.toggle("is-on", on); if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     if (lenis) lenis.scrollTo(0, { immediate: true, force: true }); else window.scrollTo(0, 0);
     current = { name, n };
@@ -620,6 +1012,7 @@
     view.querySelectorAll(".follow-form").forEach((f) => f.addEventListener("submit", () => { const b = f.querySelector("button"); if (b) b.textContent = "Sending"; }));
     if (name === "reader") mountReader(n);
     if (name === "home") { requestAnimationFrame(() => thread.build()); setTimeout(() => thread.build(), 1500); }
+    if (name === "tears") mountTears();
     if (name === "codex") { drawMap(); view.querySelectorAll(".dial button").forEach((b) => b.addEventListener("click", () => { DVR.setReached(+b.dataset.set); sound.light(); rerender(); })); }
     armSafety(); watchAmbient();
   }
@@ -635,7 +1028,7 @@
     clearInterval(safetyT); let k = 0;
     safetyT = setInterval(() => { if (!gs || ++k > 6) { clearInterval(safetyT); return; } view.querySelectorAll(".page-title, .page-lede, .sec-head h2").forEach((el) => { const r = el.getBoundingClientRect(); if (r.top < window.innerHeight && r.bottom > 0 && +getComputedStyle(el).opacity < 0.05) gs.to(el, { autoAlpha: 1, y: 0, duration: 0.6 }); }); }, 1500);
   }
-  function rerender() { const y = window.scrollY; const [name, html, n] = resolve(); if (ctx) ctx.revert(); view.innerHTML = html; mount(name, n); if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); if (ST) ST.refresh(); }
+  function rerender() { const y = window.scrollY; const [name, html, n] = resolve(); leavePage(); if (ctx) ctx.revert(); view.innerHTML = html; mount(name, n); if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); if (ST) ST.refresh(); }
 
   // ---------- reading ----------
   const tearline = $("#tearline");

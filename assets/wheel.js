@@ -123,8 +123,8 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     set: function (l) {
       this.level = l; this.cap(); PERF.lv = l;
       pace.hz = [20, 10, 0, 0][l];
-      if (l >= 3 && !root.classList.contains("dv-still")) { root.classList.add("dv-still"); stillByGov = true; }
-      if (l < 3 && stillByGov) { root.classList.remove("dv-still"); stillByGov = false; }
+      if (l >= 3 && !root.classList.contains("dv-still")) { root.classList.add("dv-still", "dv-gov-still"); stillByGov = true; }   // dv-gov-still says the governor set it, not the reader (the atlas ignores it)
+      if (l < 3 && stillByGov) { root.classList.remove("dv-still", "dv-gov-still"); stillByGov = false; }
       calmWhy(2, l >= 1); syncMotion();
     },
     calibrate: function () {   // a fixed loop: about half a millisecond on a fast laptop, five times that under 4x throttling (the page has already timed it, if app.js is the patched one)
