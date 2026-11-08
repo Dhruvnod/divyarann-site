@@ -250,7 +250,7 @@
       <section class="about guide">${paras(C.guide || [])}<h2>New chapters</h2><p>${esc(C.nextLead || "")}${cd()}</p></section>${follow()}${foot()}`;
   const disclaimer = () => `<section class="page-head"><h1 class="page-title">A work of fiction</h1></section>
       <section class="about">${paras(C.disclaimer)}</section>${foot()}`;
-  const author = () => `<section class="page-head"><h1 class="page-title">${esc(C.author)}</h1></section>
+  const author = () => `<section class="page-head"><h1 class="page-title">${esc(C.authorFull || C.author)}</h1></section>
       <section class="about">${paras(C.authorBio) || "<p>A few words from the author are on their way.</p>"}<p>Write to hello@divyarann.com.</p></section>${foot()}`;
   const sealedPage = (kick, title, line) => `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}${cd()}</p></section>${foot()}`;
   // ---------- the Seven Tears atlas (/tears/) ----------
