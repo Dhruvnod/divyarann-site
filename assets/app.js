@@ -24,7 +24,8 @@
   // not switched on: they wait for the author's decision.
   const WEAK = CPU > 3;
   window.DVCPU = { cpu: +CPU.toFixed(1), cores: CORES, coarse: COARSE, weak: WEAK };
-  const plain = () => reduced();
+  let quiet = false;   // M1: a rebuild of the same page (the codex dial, a sync) does not replay its entrance
+  const plain = () => quiet || reduced();
   const FPSQ = /[?&]fps=(\d+)/.exec(location.search), PAGE_FPS = FPSQ ? +FPSQ[1] : 60;   // the ticker never asks for more frames than this
   // the page rests a few seconds after the last input: endless decorative loops pause (CSS, html.dv-rest), the thread pulse waits, the ticker sleeps
   let sleepFrame = -1;   // the ticker's frame count when the page put it to sleep: if it has moved, GSAP woke itself (a tween was made)
@@ -83,6 +84,28 @@
   // ---------- pages ----------
   const chap = (n) => C.chapters.find((c) => c.n === n);
   const nextLine = () => (C.next ? (C.next.date ? `Chapter ${WORDS[C.next.n]} arrives ${C.next.date}.` : `Chapter ${WORDS[C.next.n]} is on its way.`) : "");
+  // the countdown to the next chapter (8 November 2026, the author: early visitors should see when it opens): a live "opens in" beside the line above,
+  // within a week of the moment (content.next.at); at the moment, "Opening now" for five minutes while the new build reaches the site, then a link
+  // that reloads the page (target=_self: the router lets it through) so the reader gets the new content
+  const cdAt = () => (C.next && C.next.at ? Date.parse(C.next.at) : 0);
+  const cdText = (left, lc) => {
+    if (left <= 0) return "";
+    const s = Math.floor(left / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60, p2 = (v) => String(v).padStart(2, "0");
+    return `${lc ? "opens" : "Opens"} in ${d ? d + (d === 1 ? " day " : " days ") : ""}${p2(h)}:${p2(m)}:${p2(x)}`;
+  };
+  const cd = (lc) => { const t = cdAt(), left = t - Date.now(); return t && left > -864e5 && left < 7 * 864e5 ? `<span class="cd" data-at="${t}"${lc ? ' data-lc="1"' : ""}>${esc(cdText(left, lc) || (lc ? "opening now" : "Opening now"))}</span>` : ""; };
+  (() => {
+    const tick = () => {
+      if (document.hidden) return;
+      document.querySelectorAll(".cd").forEach((el) => {
+        const left = +el.dataset.at - Date.now(), lc = !!el.dataset.lc, txt = cdText(left, lc), now = lc ? "opening now" : "Opening now";
+        if (txt) { if (el.textContent !== txt) el.textContent = txt; return; }
+        if (left > -3e5) { if (el.textContent !== now) el.textContent = now; return; }
+        if (!el.querySelector("a")) el.innerHTML = `<a href="/read/${C.next.n}/" target="_self">Out now · open it</a>`;
+      });
+    };
+    setInterval(tick, 1000); document.addEventListener("visibilitychange", tick);
+  })();
   // read ahead and support (website/config.json early_access and support): nothing at all until they have an address. Supporters read new chapters early
   const ahead = () => {
     const e = C.early, s = C.support; if (!e && !s) return "";
@@ -91,12 +114,12 @@
   };
   const foot = () => `<footer class="foot"><div class="foot-in"><p>© ${C.year || new Date().getFullYear()} ${esc(C.author)}. All rights reserved.</p>
       <p>Divyarann is a work of fiction. This is the draft web edition of Book One: chapters may be revised, and this edition may be withdrawn when the book is published. Please share the link rather than reposting chapters elsewhere.</p>
-      <p class="foot-links"><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.support ? `<a href="${esc(C.support.url)}" rel="noopener">${esc(C.support.label || "Support the author")}</a>` : ""}${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
+      <p class="foot-links"><a href="/guide/">How to read here</a><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.support ? `<a href="${esc(C.support.url)}" rel="noopener">${esc(C.support.label || "Support the author")}</a>` : ""}${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
   const follow = () => {
     const nl = C.newsletter, insta = C.instagram, handle = insta ? insta.replace(/\/+$/, "").split("/").pop() : "";
     return `<section class="section follow"><h2>Be told when the next tear opens</h2>
       <p class="follow-lead">${esc(C.nextLead || "")}</p>
-      ${nl ? `<form class="follow-form" action="${esc(nl.action)}" method="post"><label class="visually-hidden" for="em">Email address</label><input id="em" type="email" name="${esc(nl.field)}" placeholder="Your email" autocomplete="email" required><button type="submit">Get each chapter</button></form>
+      ${nl ? `<form class="follow-form" action="${esc(nl.action)}" method="post"><label class="visually-hidden" for="em">Email address</label><input id="em" type="email" name="${esc(nl.field)}" placeholder="Your email" autocomplete="email" enterkeyhint="send" autocapitalize="none" spellcheck="false" required><button type="submit">Get each chapter</button></form>
       <p class="fine">One email when a chapter is released, nothing else. The list is kept by Kit, the mail service; every email has a one-click unsubscribe.</p>` : ""}
       <p class="follow-links">${insta ? `<a href="${esc(insta)}" rel="noopener">Instagram @${esc(handle)}</a>` : ""}<a href="/feed.xml">RSS feed</a></p>${ahead()}</section>`;
   };
@@ -111,7 +134,7 @@
         <span class="ix-side ix-l"><span class="ix-t">${esc(c.title)}</span><span class="ix-g">${esc(c.gloss)}</span></span>
         <span class="ix-node"><span class="ix-no" lang="hi">${DEVA(pad(c.n))}</span></span>
         <span class="ix-side ix-r"><span class="ix-meta">${DVR.isRead(c.n) ? "Lit" : c.n === nextN ? (r ? "Next" : "Begin") + " · " + c.minutes + " min" : c.minutes + " min"}</span><span class="ix-teaser">${esc(c.teaser)}</span></span></a></li>`).join("");
-    const locked = C.next ? `<li class="ix-row is-locked"><span class="ix-link"><span class="ix-side ix-l"><span class="ix-t">Sealed</span></span><span class="ix-node"><span class="ix-no" lang="hi">${DEVA(pad(C.next.n))}</span></span><span class="ix-side ix-r"><span class="ix-meta">Soon${C.early ? ` · <a href="${esc(C.early.url)}" rel="noopener">${esc(C.early.label || "Read ahead")}</a>` : ""}</span><span class="ix-teaser">${esc(nextLine())}</span></span></span></li>` : "";
+    const locked = C.next ? `<li class="ix-row is-locked"><span class="ix-link"><span class="ix-side ix-l"><span class="ix-t">Sealed</span></span><span class="ix-node"><span class="ix-no" lang="hi">${DEVA(pad(C.next.n))}</span></span><span class="ix-side ix-r"><span class="ix-meta">Soon${C.early ? ` · <a href="${esc(C.early.url)}" rel="noopener">${esc(C.early.label || "Read ahead")}</a>` : ""}</span><span class="ix-teaser">${esc(nextLine())}${cd()}</span></span></span></li>` : "";
     return `
       <div class="torn" id="torn"><svg class="thread" id="thread" aria-hidden="true"></svg><svg class="thread thread-pulse" id="threadPulse" aria-hidden="true"></svg>
       <section class="hero" data-gl="hero">
@@ -124,6 +147,8 @@
       <section class="section premise" data-scene="hero">
         <p class="premise-text" data-lines data-hush>${esc(C.lede)}</p>
         <div class="cta-row" data-hush><a class="cta" href="/read/${back || begin}/">${back ? "Your bookmark, Chapter " + WORDS[back] : r === 0 ? "Begin Chapter One" : r >= C.released ? "Read again from Chapter One" : "Continue with Chapter " + WORDS[begin]}</a><a class="cta ghost" href="/read/">All chapters</a></div>
+        <p class="guide-line" data-hush>New here? <a href="/guide/">How to read here</a></p>
+        ${cd() ? `<p class="cd-line" data-hush>Chapter ${WORDS[C.next.n]}${C.next.title ? ", " + esc(C.next.title) + "," : ""}${cd(true)}</p>` : ""}
         <p class="nogl-note fine" style="margin-top:28px">The sky would not open on this device. The story is all here.</p>
       </section>
       <section class="section index" data-scene="index">
@@ -145,7 +170,7 @@
         <li class="toc-row${DVR.isRead(c.n) ? " is-read" : ""}" data-n="${c.n}"><a href="/read/${c.n}/">
           <span class="toc-n">Chapter ${WORDS[c.n]}</span><span class="toc-t">${esc(c.title)}</span><span class="toc-d" lang="hi">${esc(c.deva)}</span>
           <span class="toc-s">${esc(DVR.isRead(c.n) ? c.summary : (c.teaser || ""))}</span><span class="toc-m">${esc(c.pov)} · ${c.minutes} min${DVR.isRead(c.n) ? " · lit" : ""}${BM[c.n] ? " · bookmarked" : ""}</span></a></li>`).join("")}
-        ${C.next ? `<li class="toc-row is-locked"><span><span class="toc-n">Chapter ${WORDS[C.next.n]}</span><span class="toc-t">Sealed</span><span class="toc-s">${esc(nextLine())}</span></span></li>` : ""}
+        ${C.next ? `<li class="toc-row is-locked"><span><span class="toc-n">Chapter ${WORDS[C.next.n]}</span><span class="toc-t">Sealed</span><span class="toc-s">${esc(nextLine())}${cd()}</span></span></li>` : ""}
       </ol>${follow()}${foot()}`;
   }
 
@@ -153,7 +178,15 @@
     const c = chap(n); if (!c) return contents();
     const prev = chap(n - 1), next = chap(n + 1);
     const newCodex = C.codex.filter((e) => e.ch === n), newWords = C.glossary.filter((g) => g.ch === n);
-    return `
+    const pro = n === 1 && C.prologue;   // the Prologue (approved 8 November 2026) opens Chapter One's page, above its card; the reading line and the bookmark stay on the chapter's own text
+    return `${pro ? `
+      <section class="prologue" aria-label="${esc(pro.label)}">
+        <header class="ch-card is-prologue">
+          <p class="kicker"><span>${esc(pro.label)}</span><span>${pro.minutes} min read</span></p>
+          <h2 class="ch-title">${esc(pro.title)}</h2>
+        </header>
+        <div class="prose">${pro.html}</div>
+      </section>` : ""}
       <article class="chapter" data-n="${n}">
         <header class="ch-card">
           <p class="kicker"><span>Chapter ${WORDS[n]}</span><span>${esc(c.pov)}</span><span>${c.minutes} min read</span></p>
@@ -169,7 +202,7 @@
             ${newCodex.length ? `<div><p class="u-k">Opened in your codex</p><ul>${newCodex.slice(0, 8).map((e) => `<li><b>${esc(e.name)}.</b> ${esc(e.text)}</li>`).join("")}</ul></div>` : ""}
             ${newWords.length ? `<div><p class="u-k">Words from this chapter</p><p class="u-words">${newWords.map((g) => esc(g.term)).join(" · ")}</p></div>` : ""}
           </div>
-          <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="fine">${esc(nextLine())}</span>`}
+          <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="fine">${esc(nextLine())}${cd()}</span>`}
             ${prev ? `<a class="ch-prev" href="/read/${n - 1}/">← ${esc(prev.title)}</a>` : ""}</div>
           ${acct.nudge()}
           ${next ? "" : ahead()}
@@ -194,9 +227,9 @@
       <section class="page-head"><p class="kicker"><span>${shown} of ${C.released} chapters read</span></p><h1 class="page-title">Codex</h1>
         <p class="page-lede">Everything here opens as you read: the four, the places, the signs. Reading on another device? Set where you are.</p>
         <div class="dial" role="group" aria-label="Where you are in the book"><span class="dial-k">Read up to</span>${dial}<span class="dial-now" aria-live="polite">${shown ? "Chapter " + WORDS[shown] : "Nothing yet"}</span></div></section>
-      <section class="cards">${cards}</section>
+      <h2 class="visually-hidden">The four</h2><section class="cards">${cards}</section>
       <section class="section"><header class="sec-head"><h2>The map</h2></header><div class="map" id="map"></div></section>
-      <section class="cx">${groups}</section>${foot()}`;
+      <h2 class="visually-hidden">Index</h2><section class="cx">${groups}</section>${foot()}`;
   }
 
   function story() {
@@ -205,17 +238,21 @@
     return `
       <section class="page-head"><h1 class="page-title">The Story</h1></section>
       <section class="beats">${beats}</section>
-      <section class="trilogy"><div class="book"><p class="kicker"><span>Book One</span><span>being written</span></p><h3>Vinash <span lang="hi">विनाश</span></h3><p>The beginning of the crisis. Four people awaken under the Dwarka tear, lose people they promised to save, and learn what their power costs.</p></div>
+      <h2 class="visually-hidden">The trilogy</h2><section class="trilogy"><div class="book"><p class="kicker"><span>Book One</span><span>being written</span></p><h3>Vinash <span lang="hi">विनाश</span></h3><p>The beginning of the crisis. Four people awaken under the Dwarka tear, lose people they promised to save, and learn what their power costs.</p></div>
         <div class="book later"><p class="kicker"><span>Books Two and Three</span></p><h3>Sealed</h3><p>They open when Book One ends.</p></div></section>
-      <ol class="sums">${C.chapters.map((c) => `<li class="${c.n <= r ? "" : "is-veiled"}"><p class="kicker"><span>Chapter ${WORDS[c.n]}</span><span>${esc(c.pov)}</span></p><h3>${esc(c.title)} <span lang="sa">${esc(c.deva)}</span></h3><p>${c.n <= r ? esc(c.summary) : "Read Chapter " + WORDS[c.n] + " to unveil this."}</p></li>`).join("")}</ol>${foot()}`;
+      <h2 class="visually-hidden">Chapter by chapter</h2><ol class="sums">${C.chapters.map((c) => `<li class="${c.n <= r ? "" : "is-veiled"}"><p class="kicker"><span>Chapter ${WORDS[c.n]}</span><span>${esc(c.pov)}</span></p><h3>${esc(c.title)} <span lang="sa">${esc(c.deva)}</span></h3><p>${c.n <= r ? esc(c.summary) : "Read Chapter " + WORDS[c.n] + " to unveil this."}</p></li>`).join("")}</ol>${foot()}`;
   }
   // the disclaimer and the author's page: their paragraphs come from tools/site_v2/disclaimer.md and author.md (already escaped by the build)
   const paras = (ps) => (ps || []).map((p) => (p.v ? `<p class="verse" lang="sa">${p.t}</p>` : p.h ? `<h2>${p.t}</h2>` : `<p>${p.t.replace("{year}", new Date().getFullYear())}</p>`)).join("");
+  // How to read here (8 November 2026, the author: a place that tells readers how the bookmark works and how the site grows): its paragraphs come from
+  // tools/site_v2/guide.md; the next chapter's line and the email sign-up close it
+  const guide = () => `<section class="page-head"><h1 class="page-title">How to read here</h1></section>
+      <section class="about guide">${paras(C.guide || [])}<h2>New chapters</h2><p>${esc(C.nextLead || "")}${cd()}</p></section>${follow()}${foot()}`;
   const disclaimer = () => `<section class="page-head"><h1 class="page-title">A work of fiction</h1></section>
       <section class="about">${paras(C.disclaimer)}</section>${foot()}`;
   const author = () => `<section class="page-head"><h1 class="page-title">${esc(C.author)}</h1></section>
       <section class="about">${paras(C.authorBio) || "<p>A few words from the author are on their way.</p>"}<p>Write to hello@divyarann.com.</p></section>${foot()}`;
-  const sealedPage = (kick, title, line) => `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}</p></section>${foot()}`;
+  const sealedPage = (kick, title, line) => `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><p class="sealed-line">${esc(nextLine())}${cd()}</p></section>${foot()}`;
   // ---------- the Seven Tears atlas (/tears/) ----------
   // Dwarka at night opens from Chapter One (the city view, atlas city.js: our own map of the sector grid, the places the author has pinned and the characters' journeys); the globe (atlas.js, the stations
   // and the seven concentrations) opens from Chapter Two, with a way down into Dwarka. Since 29 October the page opens any of seven cities: Dwarka's tear is marked from Chapter Six and the other six cities
@@ -778,29 +815,30 @@
     [/^about$/, () => ["about", about()]],
     [/^author$/, () => ["author", author()]],
     [/^disclaimer$/, () => ["disclaimer", disclaimer()]],
+    [/^guide$/, () => ["guide", guide()]],
     [/^subscribed$/, () => ["subscribed", mailPage("", "Check your email", "A confirmation link is on its way to your inbox. Open it and each new chapter will reach you by email. If it has not arrived in a few minutes, look in Promotions or Spam.", `<a class="cta" href="/read/">Back to the chapters</a>`)]],
     [/^confirmed$/, () => ["confirmed", mailPage("", "Welcome to Divyarann", "Each new chapter will arrive in your inbox on the day it is released.", `<a class="cta" href="/read/1/">Start at Chapter One</a><a class="cta ghost" href="/read/">All chapters</a>`)]],
     [/^notfound$/, () => ["notfound", notFound()]],
   ];
   function mailPage(kick, title, line, ctas) { return `<section class="page-head sealed-page">${kick ? `<p class="kicker"><span>${kick}</span></p>` : ""}<h1 class="page-title">${title}</h1><p class="page-lede">${line}</p><div class="cta-row">${ctas}</div></section>${foot()}`; }
-  function unreleased(n) { return `<section class="page-head sealed-page"><p class="kicker"><span>Chapter ${WORDS[n] || n}</span></p><h1 class="page-title">Not out yet</h1><p class="page-lede">${esc(nextLine() || "This chapter has not been released.")}</p><div class="cta-row"><a class="cta" href="/read/">All chapters</a></div></section>${foot()}`; }
+  function unreleased(n) { return `<section class="page-head sealed-page"><p class="kicker"><span>Chapter ${WORDS[n] || n}</span></p><h1 class="page-title">Not out yet</h1><p class="page-lede">${esc(nextLine() || "This chapter has not been released.")}${cd()}</p><div class="cta-row"><a class="cta" href="/read/">All chapters</a></div></section>${foot()}`; }
   function notFound() { return `<section class="page-head sealed-page"><h1 class="page-title">This page is not in the book</h1><p class="page-lede">The link may be old, or the page may not have opened yet.</p><div class="cta-row"><a class="cta" href="/">Back to the threshold</a><a class="cta ghost" href="/read/">All chapters</a></div></section>${foot()}`; }
-  const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann", author: "About the author · Divyarann", disclaimer: "Disclaimer · Divyarann" };
+  const TITLES = { subscribed: "Check your email · Divyarann", confirmed: "Welcome · Divyarann", notfound: "Not found · Divyarann", home: "Divyarann · Book One: Vinash", contents: "Chapters · Divyarann", codex: "Codex · Divyarann", story: "The Story · Divyarann", tears: "The Seven Tears · Divyarann", powers: "Powers · Divyarann", about: "About · Divyarann", author: "About the author · Divyarann", disclaimer: "Disclaimer · Divyarann", guide: "How to read here · Divyarann" };
   let current = null, navId = 0, ctx = null, landing = false;
   // the page places itself (the bookmark, or the top); ScrollTrigger keeps its own copy of this setting, so it is told too
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
   if (ST && ST.clearScrollMemory) ST.clearScrollMemory("manual");
   function routeKey() {
     const p = location.pathname.replace(/\/index\.html$/, "/").replace(/([^/])$/, "$1/"), h = (location.hash || "").replace(/^#\/?/, "");
-    if (p === "/" && /^(story|tears|powers|codex|about|author|disclaimer|chapters|ch-\d+)$/.test(h)) return h;
+    if (p === "/" && /^(story|tears|powers|codex|about|author|disclaimer|guide|chapters|ch-\d+)$/.test(h)) return h;
     let m;
     if (p === "/") return "home";
     if (p === "/read/") return "chapters";
     if ((m = p.match(/^\/read\/(\d+)\/$/))) return "ch-" + m[1];
-    if ((m = p.match(/^\/(codex|story|tears|powers|about|author|disclaimer|subscribed|confirmed)\/$/))) return m[1];
+    if ((m = p.match(/^\/(codex|story|tears|powers|about|author|disclaimer|guide|subscribed|confirmed)\/$/))) return m[1];
     return "notfound";
   }
-  const PATHS = { home: "/", chapters: "/read/", codex: "/codex/", story: "/story/", tears: "/tears/", powers: "/powers/", about: "/about/", author: "/author/", disclaimer: "/disclaimer/" };
+  const PATHS = { home: "/", chapters: "/read/", codex: "/codex/", story: "/story/", tears: "/tears/", powers: "/powers/", about: "/about/", author: "/author/", disclaimer: "/disclaimer/", guide: "/guide/" };
   function resolve() { const h = routeKey(); for (const [re, fn] of ROUTES) { const m = h.match(re); if (m) return fn(m); } return ["notfound", notFound()]; }
   async function go(first) {
     // from the menu, the tear closes over the open menu and the menu goes behind it at once: closing it first showed the old page between the two
@@ -979,7 +1017,7 @@
       }
       u = Math.min(1, u + dt / dur); const s = litLen * easeIO(u), p = at(s);
       const vy = tornTop - curY + p[1];   // PERF 5: from the measured top and the frame's scroll position; it used to read layout on every frame
-      nodes.forEach((n) => { if (!n.hit && n.read && n !== target && n.s <= s) { n.hit = true; n.el.classList.remove("ping"); void n.el.offsetWidth; n.el.classList.add("ping"); } });
+      nodes.forEach((n) => { if (!n.hit && n.read && n !== target && n.s <= s) { n.hit = true; n.el.classList.remove("ping"); requestAnimationFrame(() => n.el.classList.add("ping")); } });
       if (vy > -200 && vy < window.innerHeight + 200) {
         const a = Math.min(1, u * 8) * (u > 0.95 ? (1 - u) / 0.05 : 1), tl = Math.min(130, s), ox = p[0] - BX, oy = p[1] - BY;
         box.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`; box.style.opacity = a.toFixed(3);
@@ -989,7 +1027,7 @@
       } else box.style.opacity = 0;
       if (u >= 1) {
         phase = "wait"; wait = rak ? 1.6 : 2.6; box.style.opacity = 0;
-        const land = target || nodes[0]; land.el.classList.remove("land"); void land.el.offsetWidth; land.el.classList.add("land");
+        const land = target || nodes[0]; land.el.classList.remove("land"); requestAnimationFrame(() => land.el.classList.add("land"));
       }
     }
     let rt = 0; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (torn && torn.isConnected) build(); }, 220); });
@@ -1008,11 +1046,12 @@
         const st = { trigger: row, start: "top 94%", once: true };
         gs.from(row.querySelector(".ix-l"), { x: window.innerWidth < 900 ? 0 : -34, y: window.innerWidth < 900 ? 18 : 0, autoAlpha: 0, duration: 1.0, ease: "power3.out", scrollTrigger: st });
         gs.from(row.querySelector(".ix-r"), { x: window.innerWidth < 900 ? 0 : 34, y: window.innerWidth < 900 ? 18 : 0, autoAlpha: 0, duration: 1.0, ease: "power3.out", delay: 0.06, scrollTrigger: st });
-        gs.from(row.querySelector(".ix-node"), { scale: 0.4, autoAlpha: 0, duration: 0.8, ease: "power3.out", scrollTrigger: st });
+        gs.from(row.querySelector(".ix-node"), { scale: 0.85, autoAlpha: 0, duration: 0.8, ease: "power3.out", scrollTrigger: st });
       });
-      view.querySelectorAll(".sec-head h2, .page-title, .page-lede, .toc-row, .four-card, .card, .book, .sums li").forEach((el) => {
-        if (plain()) return;
-        if (el.getBoundingClientRect().top < window.innerHeight) gs.from(el, { y: 40, autoAlpha: 0, duration: 1.0, ease: "power3.out", delay: 0.15 + 0.07 * k++ });
+      const revEls = [...view.querySelectorAll(".sec-head h2, .page-title, .page-lede, .toc-row, .four-card, .card, .book, .sums li")], revRects = revEls.map((el) => el.getBoundingClientRect());   // M10
+      revEls.forEach((el, i) => {
+        if (plain()) return; const r = revRects[i]; if (r.bottom <= 0) return;
+        if (r.top < window.innerHeight) gs.from(el, { y: 40, autoAlpha: 0, duration: 1.0, ease: "power3.out", delay: 0.15 + 0.07 * Math.min(k++, 5) });
         else gs.from(el, { y: 40, autoAlpha: 0, duration: 1.0, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 96%", once: true } });
       });
       // the premise arrives one line at a time
@@ -1021,13 +1060,13 @@
         const words = p.textContent.split(" "); p.innerHTML = words.map((w) => `<span class="wd" style="display:inline-block">${esc(w)}</span>`).join(" ");
         gs.from(p.querySelectorAll(".wd"), { y: "0.6em", autoAlpha: 0, duration: 0.9, ease: "power3.out", stagger: 0.025, scrollTrigger: { trigger: p, start: "top 80%", once: true } });
       });
-      view.querySelectorAll("[data-beat]").forEach((b) => { if (!plain()) gs.from(b, { autoAlpha: 0.08, y: 24, duration: 1, ease: "power2.out", scrollTrigger: { trigger: b, start: "top 70%", end: "top 30%", scrub: 0.6 } }); });
+      view.querySelectorAll("[data-beat]").forEach((b, i) => { if (!plain() && i) gs.from(b, { autoAlpha: 0.3, y: 24, duration: 1, ease: "power2.out", scrollTrigger: { trigger: b, start: "top 70%", end: "top 30%", scrub: 0.6 } }); });
       // the wheel moves with the home page's sections
       if (name === "home" && ST) view.querySelectorAll("[data-scene]").forEach((sec) => ST.create({ trigger: sec, start: "top 55%", end: "bottom 45%", onToggle: (self) => { if (self.isActive && window.DVGL) window.DVGL.sub(sec.dataset.scene); } }));
     }, view);
     // chapter rows light their point on the wheel
     view.querySelectorAll(".ix-row[data-n], .toc-row[data-n]").forEach((row) => {
-      row.addEventListener("pointerenter", () => { window.dispatchEvent(new CustomEvent("dvr:hoverch", { detail: +row.dataset.n })); sound.tick(); });
+      row.addEventListener("pointerenter", (e) => { if (e.pointerType !== "mouse") return; window.dispatchEvent(new CustomEvent("dvr:hoverch", { detail: +row.dataset.n })); sound.tick(); });
       row.addEventListener("pointerleave", () => window.dispatchEvent(new CustomEvent("dvr:hoverch", { detail: 0 })));
     });
     view.querySelectorAll(".follow-form").forEach((f) => f.addEventListener("submit", () => { const b = f.querySelector("button"); if (b) b.textContent = "Sending"; }));
@@ -1049,7 +1088,7 @@
     clearInterval(safetyT); let k = 0;
     safetyT = setInterval(() => { if (!gs || ++k > 6) { clearInterval(safetyT); return; } view.querySelectorAll(".page-title, .page-lede, .sec-head h2").forEach((el) => { const r = el.getBoundingClientRect(); if (r.top < window.innerHeight && r.bottom > 0 && +getComputedStyle(el).opacity < 0.05) gs.to(el, { autoAlpha: 1, y: 0, duration: 0.6 }); }); }, 1500);
   }
-  function rerender() { const y = window.scrollY; const [name, html, n] = resolve(); leavePage(); if (ctx) ctx.revert(); view.innerHTML = html; mount(name, n); if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); if (ST) ST.refresh(); }
+  function rerender() { const y = window.scrollY; const [name, html, n] = resolve(); leavePage(); if (ctx) ctx.revert(); view.innerHTML = html; quiet = true; try { mount(name, n); } finally { quiet = false; } if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y); if (ST) ST.refresh(); }
 
   // ---------- reading ----------
   const tearline = $("#tearline");
@@ -1072,7 +1111,7 @@
   let tlDrag = null;
   const tlAt = (cy) => Math.min(1, Math.max(0, (cy - tlG.y) / Math.max(1, tlG.h)));
   function tlDown(e) {
-    if (!readerSeek || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (!readerSeek || (e.pointerType === "mouse" && e.button !== 0) || (e.currentTarget === tlHit && e.pointerType !== "mouse")) return;
     e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId);
     tlDrag = { id: e.pointerId, y0: e.clientY, moved: false }; root.classList.add("tl-drag");
     if (e.currentTarget === tlHit) readerSeek(tlAt(e.clientY), false);
@@ -1284,7 +1323,7 @@
     return { show, hide };
   })();
   function ritual(n) { sound.light(); if (!unlock.show(n)) toast(`Chapter ${WORDS[n]} · a point is lit`); if (window.DVGL) window.DVGL.light(n); }
-  let rs = 20; try { rs = +localStorage.getItem("divyarann-size") || 20; } catch (e) {} root.style.setProperty("--rs", rs + "px");
+  const rsBase = matchMedia("(max-width: 860px)").matches ? 18 : 20; let rs = rsBase; try { rs = +localStorage.getItem("divyarann-size") || rsBase; } catch (e) {} root.style.setProperty("--rs", rs + "px");
   // the text size and the colours are a reader's own: when they were last chosen goes with them, so the newest choice wins on every device (fromAccount: brought by it)
   const prefsTouched = () => { try { localStorage.setItem("divyarann-prefs-t", Date.now()); } catch (e) {} changed(); };
   const setRs = (v, fromAccount) => { rs = Math.max(16, Math.min(26, v)); root.style.setProperty("--rs", rs + "px"); try { localStorage.setItem("divyarann-size", rs); } catch (e) {} if (!fromAccount) prefsTouched(); if (ST) ST.refresh(); if (readerScroll) readerScroll(); sizeEnds(); };
@@ -1319,7 +1358,7 @@
     if (root.classList.contains("menu-open")) { closeMenu(); menuBtn.focus({ preventScroll: true }); }
     else if (root.classList.contains("tools-open")) { closeTools(); toolsBtn.focus({ preventScroll: true }); }
   });
-  $("#skip").addEventListener("click", (e) => { e.preventDefault(); view.focus(); });   // the in-page link would otherwise be taken for a page change
+  $("#skip").addEventListener("click", (e) => { e.preventDefault(); if (root.classList.contains("is-intro") && $("#holdSkip")) $("#holdSkip").click(); else view.focus(); });   // the in-page link would otherwise be taken for a page change
   // 7 November 2026 (launch audit app-2, app-3): the choice is compared with the pending one, not the attribute that is written 350 ms later (a quick second click was lost or
   // doubled the eclipse), the wheel starts fetching the other colours at the click, or as the pointer reaches the button (it used to start 350 ms later and often swapped after
   // the eclipse had passed), and the colours change at once when no eclipse is drawn (reduced motion, a still page, no wheel)
@@ -1345,7 +1384,7 @@
   if (root.getAttribute("data-palette") === "grahan") document.querySelectorAll(".pal button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.p === "grahan")));
   $("#sndBtn").addEventListener("click", () => sound.set(!sound.on));
 
-  // ---------- phones: the book fills the screen. A browser grants full screen only from a tap, so the first tap asks for
+  // ---------- phones (off since 8 November 2026, see below): the book fills the screen. A browser grants full screen only from a tap, so the first tap asks for
   //            it, and so does every tap after the reader leaves it. iPhones give pages no full screen: added to the Home
   //            Screen, the site opens as an app without the browser's bars (the manifest), and they are told so once ----------
   (() => {
@@ -1353,9 +1392,12 @@
     const app = (window.matchMedia && window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches) || navigator.standalone === true;
     if (!phone || app) return;
     const req = root.requestFullscreen || root.webkitRequestFullscreen, on = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    // 8 November 2026, the author testing on a OnePlus Nord CE2: the site forced full screen too often. Pages no longer ask for it; only iPhones keep the one hint (?fs=1 brings the old request back for testing)
+    if (!/[?&]fs=1/.test(location.search) && req) return;
     if (req && (document.fullscreenEnabled || document.webkitFullscreenEnabled)) {
       let asking = false;
-      const ask = () => {
+      const ask = (e) => {
+        if (e && e.target && e.target.closest && e.target.closest("#acct, .acct, .acct-ask, a[target], a[href^='http']")) return;   // P3
         if (asking || on() || (navigator.userActivation && !navigator.userActivation.isActive)) return;
         asking = true;
         try { const p = req.call(root, { navigationUI: "hide" }); if (p && p.then) p.then(() => { asking = false; }, () => { asking = false; }); else asking = false; } catch (e) { asking = false; }
@@ -1408,8 +1450,8 @@
     else tl.add(() => hold.classList.add("ready"), 3.2);
   }
   let holdT = null;
-  const startHold = (e) => { e.preventDefault(); if (!gs) { enter(true); return; } holdT = gs.to(fg, { strokeDashoffset: 0, duration: 0.9, ease: "power1.in", onComplete: () => enter(true) }); };
-  const stopHold = () => { if (holdT && !entered) { holdT.kill(); gs.to(fg, { strokeDashoffset: 264, duration: 0.4 }); } };
+  const startHold = (e) => { e.preventDefault(); if (!gs) { enter(true); return; } holdT = gs.to(fg, { strokeDashoffset: 0, duration: 0.9, ease: "none", onComplete: () => enter(true) }); };
+  const stopHold = () => { if (holdT && !entered) { holdT.kill(); gs.to(fg, { strokeDashoffset: 264, duration: 0.2, ease: "power2.out" }); } };
   holdBtn.addEventListener("pointerdown", startHold); ["pointerup", "pointerleave", "pointercancel"].forEach((t) => holdBtn.addEventListener(t, stopHold));
   holdBtn.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") enter(true); });
   $("#holdSkip").addEventListener("click", () => enter(false));
@@ -1541,8 +1583,8 @@
         <p class="acct-note" id="acInApp" hidden>Google sign-in does not open inside this app. Sign in with email below, or open divyarann.com in your browser.</p>
         <p class="acct-or"><span>or with email</span></p>
         <form class="acct-form" id="acForm" novalidate>
-          <label for="acEmail">Email</label><input id="acEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false">
-          <label for="acPass">Password</label><input id="acPass" type="password" autocomplete="current-password">
+          <label for="acEmail">Email</label><input id="acEmail" type="email" autocomplete="email" inputmode="email" spellcheck="false" autocapitalize="none" enterkeyhint="next">
+          <label for="acPass">Password</label><input id="acPass" type="password" autocomplete="current-password" enterkeyhint="go">
           <div class="acct-row"><button type="submit" class="cta" id="acIn">Sign in</button><button type="button" class="cta ghost" id="acNew">Create account</button></div>
           <button type="button" class="acct-link" id="acForgot">Forgot your password?</button>
         </form>
@@ -1586,7 +1628,7 @@
       clearTimeout(hideT);   // a window reopened while it was still closing (sign in, then straight to Sign out) was hidden by the closing's own timer
       opener = document.activeElement; closeMenu(); ask.hide();
       paint(); say(""); win.hidden = false; root.classList.add("acct-open"); if (lenis) lenis.stop();
-      requestAnimationFrame(() => { win.classList.add("show"); const f = user ? q("#acOut") : (inApp ? q("#acEmail") : q("#acG")); if (f) f.focus(); });
+      requestAnimationFrame(() => { void win.offsetWidth; win.classList.add("show"); const f = user ? q("#acOut") : (inApp ? q("#acEmail") : q("#acG")); if (f) f.focus(); });
       if (!user) load().catch(() => {});   // the code is ready by the time they choose
     }
     function close() {
@@ -1629,7 +1671,7 @@
       } catch (e) { say(why(e)); }
     }
     q("#acForm").addEventListener("submit", (e) => { e.preventDefault(); byEmail(false); });
-    q("#acNew").addEventListener("click", () => byEmail(true));
+    q("#acNew").addEventListener("click", () => { q("#acPass").autocomplete = "new-password"; byEmail(true); });
     q("#acForgot").addEventListener("click", async () => {
       const em = q("#acEmail").value.trim();
       if (!em) { say("Type your email address above, then choose Forgot your password again."); q("#acEmail").focus(); return; }
@@ -1664,7 +1706,7 @@
       function maybe() {
         if (!due()) { clearTimeout(t); t = 0; return; }
         if (t || !el.hidden) return;
-        t = setTimeout(() => { t = 0; if (!due()) return; el.hidden = false; requestAnimationFrame(() => el.classList.add("show")); }, 1600);
+        t = setTimeout(() => { t = 0; if (!due()) return; el.hidden = false; requestAnimationFrame(() => { void el.offsetWidth; el.classList.add("show"); }); }, 1600);
       }
       function hide() { clearTimeout(t); t = 0; if (el.hidden) return; el.classList.remove("show"); setTimeout(() => { if (!el.classList.contains("show")) el.hidden = true; }, reduced() ? 0 : 400); }
       // it waits for the threshold to be passed (a first visit's opening act, or a return's glance)

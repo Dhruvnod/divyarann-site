@@ -29,6 +29,7 @@ const SETTLE = 500;             // ms the loop keeps drawing after the last thin
    passed through, which are blurred or gone in a moment, are not fetched at full detail (measured on the real imagery: home, the card, the dive into Dwarka cost what they cost at detail 3, 4.6 MB of
    imagery against 4.4, in 508 requests against 542). A 512 texture (?ovres=512) is sharper still but asked for 3.6 times the imagery bytes; not used. */
 const ERR_SHARP = { strong: 2, mid: 3, phone: 3.5, low: 6 };
+const FAR_ERR = (() => { const q = +(new URLSearchParams(location.search).get("farerr") || 0); return q > 0 ? q : 1.2; })();   // the detail of the whole-globe view (8 November 2026, see tick)
 const ERR_BY = ERR_SHARP, DPR_BY = { strong: MAX_DPR, mid: 1.25, phone: MAX_DPR, low: 1 };
 const sstep = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
 
@@ -835,9 +836,12 @@ void main() { vec2 d = vUv - 0.5; float j = fract(52.9829189 * fract(dot(gl_Frag
     const rate = moveLast.lengthSq() ? cp0.distanceTo(moveLast) / alt0 / dt : 0; moveLast.copy(cp0);
     moveK += ((plan || fly || dragging ? clamp((rate - 0.6) / 1.2, 0, 1) : 0) - moveK) * (rate > 0.6 && (plan || fly || dragging) ? 0.5 : 0.25);
     if (moveK < 0.01) moveK = 0;
-    const errNow = ERR * (1 + MOVE_ERR * moveK);
+    // 8 November 2026 (the author, on a OnePlus Nord CE2: the globe from afar was blurry): far out the whole globe is a few dozen tiles, so it is drawn at full detail (1.2) whatever the
+    // device; from 8,000 km down to 3,000 km the detail eases back to the device's own. Measured on a phone at the home view: 11 tiles, 1.1 MB at 3.5 against 73 tiles, 2.35 MB at 1.2. ?farerr=N overrides it
+    const farK = sstep((alt0 - 3e6) / 5e6), errBase = ERR * (1 - farK) + Math.min(ERR, FAR_ERR) * farK;
+    const errNow = errBase * (1 + MOVE_ERR * moveK);
     if (tiles.errorTarget !== errNow) tiles.errorTarget = errNow;
-    state.moveK = Math.round(moveK * 100) / 100;
+    state.moveK = Math.round(moveK * 100) / 100; state.errNow = Math.round(errNow * 100) / 100;   // read by the tests
     if (!(plan && plan.holdTiles && now >= plan.holdTiles)) tiles.update();
     // the uniforms that follow the camera
     const alt = camera.position.length() - 6371000, k = clamp((alt - 5e6) / 1e7, 0, 1), near = 0.28 + 0.72 * k * k * (3 - 2 * k);   // the regions fade back as the camera comes close, so the ground shows through

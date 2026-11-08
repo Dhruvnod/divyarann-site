@@ -746,7 +746,7 @@ window.PR_MANIFEST = {"pal":{"akash":{"aura":{"file":"/assets/wheel/akash_aura.w
     var ap = a - spin.a * PI / 180; ap = ((ap % TAU) + TAU) % TAU;
     return { ch: Math.round(a / SEG) % 18, petal: Math.round(ap / SEG) % 18, outer: rr > 0.94 };   // the truths' petals start beyond the chapters' ring
   }
-  function showHint(e, html) { if (!hintEl) return; hintEl.innerHTML = html; hintEl.style.left = e.clientX + "px"; hintEl.style.top = e.clientY + "px"; hintEl.classList.add("show"); clearTimeout(hintEl._t); hintEl._t = setTimeout(function () { hintEl.classList.remove("show"); }, 2200); }
+  function showHint(e, html) { if (!hintEl) return; hintEl.innerHTML = html; hintEl.style.left = Math.max(8, Math.min(e.clientX, innerWidth - hintEl.offsetWidth - 24)) + "px"; hintEl.style.top = e.clientY + "px"; hintEl.classList.add("show"); clearTimeout(hintEl._t); hintEl._t = setTimeout(function () { hintEl.classList.remove("show"); }, 2200); }
   function hoverMark(i) {   // a ring on the truth under the pointer; the chapters' own light is drawn from the dyn cells
     if (i === shown) return; shown = i;
     if (i < 100) { mk.hover.style.opacity = 0; return; }
