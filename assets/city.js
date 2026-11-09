@@ -10,8 +10,8 @@
    fades in. (Until 30 October the strongest tier also fetched n8ao, an ambient occlusion pass, once the camera came close; the building shader does that work now.) */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { fetchGz, fetchRaw, prepareSteps, heightAt, unpackLines, decodePath, streetIndex, useShapeUtils, noiseData, treeSteps, TREE_TILE } from "./city_data.js?v=fe33627d7b";
-import * as S from "./city_shaders.js?v=fe33627d7b";
+import { fetchGz, fetchRaw, prepareSteps, heightAt, unpackLines, decodePath, streetIndex, useShapeUtils, noiseData, treeSteps, TREE_TILE } from "./city_data.js?v=fa0aca690b";
+import * as S from "./city_shaders.js?v=fa0aca690b";
 
 useShapeUtils(THREE.ShapeUtils);
 
@@ -93,7 +93,7 @@ export const CITY_DAY = Object.freeze({
    prepare(file, pre) starts a worker (city_data.js, run as a module worker by its own address) that unpacks the city file and builds every typed array of the scene, and returns a handle whose promise
    gives them back (handed over, not copied). The page calls it as soon as a reader chooses a city on the globe, so that by the time "Fly down" is pressed the city is mostly made; mount() takes the handle
    (opts.prepared) or starts one itself. Where workers fail (an old browser) the same steps run on the main thread between frames. */
-const DATA_URL = new URL("./city_data.js?v=fe33627d7b", import.meta.url).href;      // the build gives this address the modules' version, as it does the import above
+const DATA_URL = new URL("./city_data.js?v=fa0aca690b", import.meta.url).href;      // the build gives this address the modules' version, as it does the import above
 function threeCoreURL() {     // a worker has no import map: the address of three's core module the page itself loaded (the triangulator lives there)
   try { const im = JSON.parse(document.querySelector('script[type="importmap"][data-atlas]').textContent).imports || {}; const k = Object.keys(im).find((x) => /\/three\.core\.js$/.test(x)); if (k) return im[k]; } catch (e) {}
   try { return import.meta.resolve("three").replace(/three\.module(\.min)?\.js$/, "three.core.min.js"); } catch (e) {}
