@@ -166,7 +166,10 @@
     return `
       <section class="page-head"><p class="kicker"><span>${C.released} chapters out</span></p><h1 class="page-title">Chapters</h1>
         <p class="page-lede">Each is titled with one Sanskrit word. A point on the wheel lights for every chapter you read.</p></section>
-      <ol class="toc">${C.chapters.map((c) => `
+      <ol class="toc">${C.prologue ? `
+        <li class="toc-row is-prologue${DVR.isRead(1) ? " is-read" : ""}"><a href="/read/1/">
+          <span class="toc-n">${esc(C.prologue.label)}</span><span class="toc-t">${esc(C.prologue.title)}</span>${C.prologue.deva ? `<span class="toc-d" lang="sa">${esc(C.prologue.deva)}</span>` : ""}
+          <span class="toc-s">${esc(C.prologue.line || "")}</span><span class="toc-m">Opens Chapter One · ${C.prologue.minutes} min</span></a></li>` : ""}${C.chapters.map((c) => `
         <li class="toc-row${DVR.isRead(c.n) ? " is-read" : ""}" data-n="${c.n}"><a href="/read/${c.n}/">
           <span class="toc-n">Chapter ${WORDS[c.n]}</span><span class="toc-t">${esc(c.title)}</span><span class="toc-d" lang="hi">${esc(c.deva)}</span>
           <span class="toc-s">${esc(DVR.isRead(c.n) ? c.summary : (c.teaser || ""))}</span><span class="toc-m">${esc(c.pov)} · ${c.minutes} min${DVR.isRead(c.n) ? " · lit" : ""}${BM[c.n] ? " · bookmarked" : ""}</span></a></li>`).join("")}
@@ -183,7 +186,8 @@
       <section class="prologue" aria-label="${esc(pro.label)}">
         <header class="ch-card is-prologue">
           <p class="kicker"><span>${esc(pro.label)}</span><span>${pro.minutes} min read</span></p>
-          <h2 class="ch-title">${esc(pro.title)}</h2>
+          <h2 class="ch-title">${esc(pro.title)}</h2>${pro.deva ? `
+          <p class="ch-deva" lang="sa">${esc(pro.deva)}</p>` : ""}
         </header>
         <div class="prose">${pro.html}</div>
       </section>` : ""}
