@@ -399,7 +399,8 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 
 /* ---------- the threshold (first visit) ---------- */
 .intro { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none; }
-html:not(.js) .intro { display: none; }   /* without JavaScript: just the words */
+html:not(.js) .intro { display: none; }
+html.dv-direct .intro { display: none; }   /* tagged links and chapter addresses go straight in (reader-growth plan, week one, 12 November 2026) */   /* without JavaScript: just the words */
 /* the bolt's box is twice as wide as its zigzag, lets it overflow, and carries the glow: on the path the glow stopped at the path's own bounds, and where the bolt swung
    past its old 40 px box (the middle of the screen) the glow and the line itself were cut off */
 .intro-line { position: absolute; left: 50%; top: 0; height: 100%; width: 80px; transform: translateX(-50%); overflow: visible; filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 55%, transparent)); }
@@ -490,6 +491,11 @@ html.acct-open .acct-ask, html.menu-open .acct-ask { opacity: 0; pointer-events:
 .menu-acct-btn:hover { background: var(--bone); color: var(--ink); }
 .menu-acct-who { font-size: var(--fs-text); color: var(--muted); overflow-wrap: anywhere; }
 .acct-nudge { width: 100%; border-top: 1px solid var(--line); padding-top: 22px; }
+.ch-ask { width: 100%; border-top: 1px solid var(--line); padding-top: 26px; display: grid; gap: 12px; justify-items: center; }   /* the email ask at the end of Chapter One and the latest chapter (week one, 12 November 2026) */
+.ch-ask .u-k { margin: 0; }
+.ch-ask-t { margin: 0; font-size: var(--fs-text); line-height: 1.6; color: var(--bone-2); }
+.ch-ask .follow-form { margin-top: 4px; }
+.ch-ask .fine { margin: 0; text-align: center; }
 .acct-nudge p { margin: 0; font-size: var(--fs-text); line-height: 1.6; color: var(--bone-2); }
 .acct-nudge .acct-link { display: inline; min-height: 0; font-size: var(--fs-label); margin: 0 2px; padding: 8px 0; } .acct-nudge .acct-link::after { bottom: 6px; }
 @media (max-width: 700px) {

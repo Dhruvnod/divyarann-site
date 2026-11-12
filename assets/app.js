@@ -115,12 +115,15 @@
   const foot = () => `<footer class="foot"><div class="foot-in"><p>© ${C.year || new Date().getFullYear()} ${esc(C.author)}. All rights reserved.</p>
       <p>Divyarann is a work of fiction. This is the draft web edition of Book One: chapters may be revised, and this edition may be withdrawn when the book is published. Please share the link rather than reposting chapters elsewhere.</p>
       <p class="foot-links"><a href="/guide/">How to read here</a><a href="/about/">About and privacy</a><a href="/author/">About the author</a><a href="/disclaimer/">Disclaimer</a><a href="mailto:hello@divyarann.com">hello@divyarann.com</a>${C.support ? `<a href="${esc(C.support.url)}" rel="noopener">${esc(C.support.label || "Support the author")}</a>` : ""}${C.instagram ? `<a href="${esc(C.instagram)}" rel="noopener">Instagram</a>` : ""}<a href="/feed.xml">RSS</a></p></div></footer>`;
+  // the chapter-email form, wherever it stands; data-where names the place for the counter (week one of the reader-growth plan, 12 November 2026)
+  const signupForm = (where) => { const nl = C.newsletter; return nl ? `<form class="follow-form" data-where="${where}" action="${esc(nl.action)}" method="post"><label class="visually-hidden" for="em-${where}">Email address</label><input id="em-${where}" type="email" name="${esc(nl.field)}" placeholder="Your email" autocomplete="email" enterkeyhint="send" autocapitalize="none" spellcheck="false" required><button type="submit">Get each chapter</button></form>
+      <p class="fine">One email when a chapter is released, nothing else. The list is kept by Kit, the mail service; every email has a one-click unsubscribe.</p>` : ""; };
+  const subscribed = () => { try { return !!localStorage.getItem("divyarann-subscribed"); } catch (e) { return false; } };
   const follow = () => {
-    const nl = C.newsletter, insta = C.instagram, handle = insta ? insta.replace(/\/+$/, "").split("/").pop() : "";
+    const insta = C.instagram, handle = insta ? insta.replace(/\/+$/, "").split("/").pop() : "";
     return `<section class="section follow"><h2>Be told when the next tear opens</h2>
       <p class="follow-lead">${esc(C.nextLead || "")}</p>
-      ${nl ? `<form class="follow-form" action="${esc(nl.action)}" method="post"><label class="visually-hidden" for="em">Email address</label><input id="em" type="email" name="${esc(nl.field)}" placeholder="Your email" autocomplete="email" enterkeyhint="send" autocapitalize="none" spellcheck="false" required><button type="submit">Get each chapter</button></form>
-      <p class="fine">One email when a chapter is released, nothing else. The list is kept by Kit, the mail service; every email has a one-click unsubscribe.</p>` : ""}
+      ${signupForm("home")}
       <p class="follow-links">${insta ? `<a href="${esc(insta)}" rel="noopener">Instagram @${esc(handle)}</a>` : ""}<a href="/feed.xml">RSS feed</a></p>${ahead()}</section>`;
   };
 
@@ -181,6 +184,8 @@
     const c = chap(n); if (!c) return contents();
     const prev = chap(n - 1), next = chap(n + 1);
     const newCodex = C.codex.filter((e) => e.ch === n), newWords = C.glossary.filter((g) => g.ch === n);
+    // the email is asked for at the end of Chapter One and of the latest chapter, where a reader most wants the next one; it takes the place of the sign-in line there
+    const ask = !!C.newsletter && (n === 1 || !next) && !subscribed();
     const pro = n === 1 && C.prologue;   // the Prologue (approved 8 November 2026) opens Chapter One's page, above its card; the reading line and the bookmark stay on the chapter's own text
     return `${pro ? `
       <section class="prologue" aria-label="${esc(pro.label)}">
@@ -208,7 +213,7 @@
           </div>
           <div class="ch-next">${next ? `<span class="kicker"><span>Next</span><span>Chapter ${WORDS[n + 1]}</span></span><a href="/read/${n + 1}/">${esc(next.title)}</a>` : `<span class="fine">${esc(nextLine())}${cd()}</span>`}
             ${prev ? `<a class="ch-prev" href="/read/${n - 1}/">← ${esc(prev.title)}</a>` : ""}</div>
-          ${acct.nudge()}
+          ${ask ? `<div class="ch-ask"><p class="u-k">The next chapter, by email</p><p class="ch-ask-t">One email each Sunday when a new chapter opens.${C.next ? ` ${esc(nextLine())}` : ""}</p>${signupForm("ch" + n)}</div>` : acct.nudge()}
           ${next ? "" : ahead()}
         </footer>
       </article>${foot()}`;
@@ -891,18 +896,33 @@
     const seen = () => document.visibilityState === "visible" && !document.prerendering;
     const shown = () => { if (unseen && seen()) { const p = unseen; unseen = null; start(p); } };
     document.addEventListener("visibilitychange", shown); document.addEventListener("prerenderingchange", shown);
-    return (path) => {
+    const page = (path) => {
       if (off || path === last || !document.querySelector("script[data-goatcounter]")) return;
       last = path; clearInterval(wait);
       if (seen()) { unseen = null; start(path); } else unseen = path;
     };
+    // funnel events (week one of the reader-growth plan, 12 November 2026): named steps such as door-shown, ch1-start, ch1-done or signup-submit-ch1,
+    // each counted once per browser session, so the dashboard shows where readers stop. GoatCounter's names may not start with "/"
+    const done = new Set();
+    page.event = (name) => {
+      if (off || done.has(name) || !document.querySelector("script[data-goatcounter]")) return;
+      done.add(name);
+      try { const k = "dv-ev-" + name; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch (e) {}
+      const fire = () => { const gc = window.goatcounter; if (!gc || typeof gc.count !== "function") return false; gc.count({ path: name, title: name, event: true }); return true; };
+      if (fire()) return; let k = 0; const w = setInterval(() => { if (fire() || ++k > 40) clearInterval(w); }, 250);
+    };
+    return page;
   })();
+  const track = visits.event;
+  { const ua = navigator.userAgent; if (/Instagram/i.test(ua)) track("inapp-instagram"); else if (/FBAN|FBAV|FB_IAB/.test(ua)) track("inapp-facebook"); }
   // moving between pages without reloading: internal links push the path, the back button pops it
   function nav(path) { if (path === location.pathname + location.search) return; history.pushState(null, "", path); go(false); }
   document.addEventListener("click", (e) => {
     const a = e.target.closest && e.target.closest("a[href]"); if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target) return;
     const url = new URL(a.href, location.href); if (url.origin !== location.origin || /\.(xml|png|jpg|webp|txt|json)$/.test(url.pathname)) return;
-    e.preventDefault(); nav(url.pathname);
+    e.preventDefault();
+    { const m = /^\/read\/(\d+)\/?$/.exec(url.pathname); if (m && current && current.name !== "reader") track(`begin-ch${m[1]}-from-${current.name}`); }
+    nav(url.pathname);
   });
   window.addEventListener("popstate", () => go(false));
   window.addEventListener("hashchange", () => {   // an old #story-style link followed on an open page
@@ -1073,7 +1093,11 @@
       row.addEventListener("pointerenter", (e) => { if (e.pointerType !== "mouse") return; window.dispatchEvent(new CustomEvent("dvr:hoverch", { detail: +row.dataset.n })); sound.tick(); });
       row.addEventListener("pointerleave", () => window.dispatchEvent(new CustomEvent("dvr:hoverch", { detail: 0 })));
     });
-    view.querySelectorAll(".follow-form").forEach((f) => f.addEventListener("submit", () => { const b = f.querySelector("button"); if (b) b.textContent = "Sending"; }));
+    view.querySelectorAll(".follow-form").forEach((f) => {
+      const where = f.dataset.where || "page";
+      f.addEventListener("submit", () => { const b = f.querySelector("button"); if (b) b.textContent = "Sending"; track("signup-submit-" + where); try { localStorage.setItem("divyarann-subscribed", String(Date.now())); } catch (e) {} });
+      if ("IntersectionObserver" in window) { const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); track("signup-seen-" + where); } }); io.observe(f); }
+    });
     if (name === "reader") mountReader(n);
     if (name === "home") { requestAnimationFrame(() => thread.build()); setTimeout(() => thread.build(), 1500); }
     if (name === "tears") mountTears();
@@ -1278,7 +1302,7 @@
     const prose = $("#prose"), end = $("#chEnd");
     bookmark.mount(prose, n, landing);
     let pg = { top: 0, h: 1, pm: -1 };
-    const onScroll = (y) => { if (!prose || !prose.isConnected) return; if (y == null) y = window.pageYOffset; const p = Math.min(1, Math.max(0, (window.innerHeight * 0.6 - (pg.top - y)) / pg.h)); tlSet(p, pg.pm); if (p > 0.04) bookmark.hint(); };
+    const onScroll = (y) => { if (!prose || !prose.isConnected) return; if (y == null) y = window.pageYOffset; const p = Math.min(1, Math.max(0, (window.innerHeight * 0.6 - (pg.top - y)) / pg.h)); tlSet(p, pg.pm); if (p > 0.04) bookmark.hint(); if (p > 0.08) track(`ch${n}-start`); if (p >= 0.5) track(`ch${n}-half`); };
     const measure = () => { if (!prose || !prose.isConnected) return; tlMeasure(); const r = prose.getBoundingClientRect(); pg = { top: r.top + window.pageYOffset, h: Math.max(1, r.height), pm: bookmark.at(r) }; onScroll(); };
     if (readerHook) frameHooks.delete(readerHook); readerHook = onScroll; frameHooks.add(onScroll);
     readerScroll = measure; measure();
@@ -1290,7 +1314,7 @@
     };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
     if (window.ResizeObserver) { const ro = new ResizeObserver(() => { if (prose.isConnected) measure(); else ro.disconnect(); }); ro.observe(prose); }
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.disconnect(); if (DVR.markRead(n)) ritual(n); } }), { rootMargin: "0px 0px -30% 0px" });
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.disconnect(); track(`ch${n}-done`); if (DVR.markRead(n)) ritual(n); } }), { rootMargin: "0px 0px -30% 0px" });
     io.observe(end);
     // word help
     const pop = $("#pop"), gl = Object.fromEntries(C.glossary.map((g) => [g.id, g]));
@@ -1433,6 +1457,7 @@
     if (entered) return; entered = true;
     try { localStorage.setItem("divyarann-seen", "1"); } catch (e) {}
     if (withSound) sound.set(true);
+    if (!root.classList.contains("returning") && !root.classList.contains("dv-direct") && !window.DV_FAILSAFE) track(withSound ? "door-enter-sound" : "door-enter-silent");
     if (window.DVGL) window.DVGL.open();
     const done = () => { root.classList.remove("is-intro"); root.classList.add("entered"); intro.remove(); if (ST) ST.refresh(); };
     if (gs && !reduced()) gs.timeline({ onComplete: done }).to(hold, { autoAlpha: 0, duration: 0.4 }, 0).to(intro.querySelectorAll(".intro-count, .intro-word"), { autoAlpha: 0, duration: 0.6 }, 0).to(iPath, { opacity: 0, duration: 0.8 }, 0.2).add(() => { root.classList.remove("is-intro"); root.classList.add("entered"); }, 0.35);
@@ -1441,6 +1466,10 @@
   function runIntro() {
     const returning = root.classList.contains("returning"), n = DVR.reached();
     if (window.DV_FAILSAFE) { if (window.DVGL) window.DVGL.intro(true); enter(false); return; }   // 7 November 2026 (audit shell-1): the head's failsafe already hid the threshold (app.js was late): go straight in
+    // a tagged link (?ref= or ?utm_source=) or a chapter's own address goes straight in: the threshold stays for people who type the home address
+    // (week one of the reader-growth plan, 12 November 2026; the head script set dv-direct and never showed the threshold)
+    if (root.classList.contains("dv-direct")) { track("door-direct"); if (window.DVGL) window.DVGL.intro(true); enter(false); return; }
+    track(returning ? "door-return" : "door-shown");
     $("#introLabel").textContent = "of 18 lit";
     if (window.DVGL) window.DVGL.intro(returning);
     if (!gs || reduced()) { iWhole(); $("#introNum").textContent = pad(n); if (returning) setTimeout(() => enter(false), 300); else hold.classList.add("ready"); return; }
@@ -1706,7 +1735,8 @@
       document.body.appendChild(el);
       let t = 0;
       el.addEventListener("click", (e) => { if (e.target.closest("#askIn")) open(); else if (e.target.closest("[data-guest]")) guest(); });
-      const due = () => !user && !choice() && current && current.name === "home" && !root.classList.contains("is-intro") && win.hidden;
+      // not before the reader has finished Chapter One (reader-growth plan, week one): a first visit is for the story, not an account
+      const due = () => !user && !choice() && current && current.name === "home" && !root.classList.contains("is-intro") && win.hidden && DVR.reached() >= 1;
       function maybe() {
         if (!due()) { clearTimeout(t); t = 0; return; }
         if (t || !el.hidden) return;
