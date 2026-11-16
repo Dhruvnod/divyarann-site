@@ -335,12 +335,14 @@ html.dv-weak.entered:not(.dv-still):not(.no-webgl) .title { animation: riseAll 1
 
 /* ---------- codex ---------- */
 .dial { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
+.dial-b { display: contents; }   /* the numbers: part of the row on computers; on phones their own row that swipes sideways once the chapters outgrow it (17 November 2026, Chapter Seven made eight) */
 .dial-k { margin-right: 8px; font-family: var(--f-ui); font-size: var(--fs-label); letter-spacing: var(--ls-label); color: var(--muted); }
 .dial button { width: var(--tap); height: var(--tap); border-radius: 50%; border: 1px solid var(--line-2); font-family: var(--f-deva); font-weight: var(--w-deva); font-size: 20px; line-height: 1; color: var(--bone-2); transition: background-color var(--t-hover) var(--ease), border-color var(--t-hover) var(--ease), color var(--t-hover) var(--ease); }
 @media (hover: hover) and (pointer: fine) { .dial button:hover { border-color: var(--accent); color: var(--bone); } }
 .dial button[aria-pressed="true"] { background: var(--accent); color: var(--ink); border-color: var(--accent); }
 .dial-now { margin-left: 8px; font-family: var(--f-display); font-weight: 400; font-size: 24px; line-height: 1.2; letter-spacing: -0.01em; color: var(--bone); }   /* what the buttons say in words: the numerals are Devanagari */
-@media (max-width: 480px) { .dial { gap: 8px 6px; } .dial-k { flex: 0 0 100%; margin-bottom: 2px; } .dial-now { flex: 0 0 100%; margin: 6px 0 0; } }   /* phones: the label above, the six buttons on one line, the words below */
+@media (max-width: 480px) { .dial { gap: 8px 6px; } .dial-k { flex: 0 0 100%; margin-bottom: 2px; } .dial-now { flex: 0 0 100%; margin: 6px 0 0; }
+  .dial-b { display: flex; flex: 0 0 100%; width: 100%; min-width: 0; contain: inline-size; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x; padding: 2px 0; } .dial-b::-webkit-scrollbar { display: none; } .dial-b button { flex: 0 0 auto; } }   /* phones: the label above, the six buttons on one line, the words below */
 /* the lines between the cards (and the books) are drawn by the items, so they arrive with them: the grid's own background, showing through 1 px gaps, stood as a
    grey slab while the cards faded in after a page change */
 .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-block: 1px solid var(--line); margin: 0 var(--gutter); }

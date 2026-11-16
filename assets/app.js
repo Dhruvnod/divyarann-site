@@ -235,7 +235,7 @@
     return `
       <section class="page-head"><p class="kicker"><span>${shown} of ${C.released} chapters read</span></p><h1 class="page-title">Codex</h1>
         <p class="page-lede">Everything here opens as you read: the four, the places, the signs. Reading on another device? Set where you are.</p>
-        <div class="dial" role="group" aria-label="Where you are in the book"><span class="dial-k">Read up to</span>${dial}<span class="dial-now" aria-live="polite">${shown ? "Chapter " + WORDS[shown] : "Nothing yet"}</span></div></section>
+        <div class="dial" role="group" aria-label="Where you are in the book"><span class="dial-k">Read up to</span><span class="dial-b">${dial}</span><span class="dial-now" aria-live="polite">${shown ? "Chapter " + WORDS[shown] : "Nothing yet"}</span></div></section>
       <h2 class="visually-hidden">The four</h2><section class="cards">${cards}</section>
       <section class="section"><header class="sec-head"><h2>The map</h2></header><div class="map" id="map"></div></section>
       <h2 class="visually-hidden">Index</h2><section class="cx">${groups}</section>${foot()}`;
@@ -1101,7 +1101,7 @@
     if (name === "reader") mountReader(n);
     if (name === "home") { requestAnimationFrame(() => thread.build()); setTimeout(() => thread.build(), 1500); }
     if (name === "tears") mountTears();
-    if (name === "codex") { drawMap(); view.querySelectorAll(".dial button").forEach((b) => b.addEventListener("click", () => { DVR.setReached(+b.dataset.set); sound.light(); rerender(); })); }
+    if (name === "codex") { drawMap(); { const row = view.querySelector(".dial-b"), on = row && row.querySelector("[aria-pressed=true]"); if (row && on && row.scrollWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft - row.clientWidth / 2 + on.offsetWidth / 2); } view.querySelectorAll(".dial button").forEach((b) => b.addEventListener("click", () => { DVR.setReached(+b.dataset.set); sound.light(); rerender(); })); }
     armSafety(); watchAmbient();
   }
   // PERF 4: the page's endless decorative loops (the scroll cue, the next chapter's ring) only run while their element is on screen
